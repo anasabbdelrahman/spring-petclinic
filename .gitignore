@@ -49,3 +49,4 @@ _site/
 
 ### Claude Code ###
 .claude-tool-log.txt
+.playwright-mcp/

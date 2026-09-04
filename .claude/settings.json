@@ -10,6 +10,28 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -e '.tool_input.file_path | test(\"(^|/)\\\\.env(\\\\..*)?$\") | not' >/dev/null || { echo 'refused: .env files are protected' >&2; exit 2; }"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '\"[\\(now|todate)] \\(.tool_name) on \\(.tool_input.file_path // \"n/a\")\"' >> \"$CLAUDE_PROJECT_DIR/.claude-tool-log.txt\""
+          }
+        ]
+      }
     ]
   }
 }
