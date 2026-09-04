@@ -46,3 +46,6 @@ out/
 _site/
 *.css
 !petclinic.css
+
+### Claude Code ###
+.claude-tool-log.txt
