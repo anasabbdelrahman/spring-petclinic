@@ -9,6 +9,15 @@
             "command": "echo 'Reminder: Before committing, stage your changes and run /review-changes.'"
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"$CLAUDE_PROJECT_DIR/task-checklist.md\""
+          }
+        ]
       }
     ],
     "PreToolUse": [
