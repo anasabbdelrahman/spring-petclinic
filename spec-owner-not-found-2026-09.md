@@ -129,9 +129,12 @@ count, the absence of owner 9999, and a control owner's stored values are unchan
 
 ## 8. Acceptance-criterion-to-test mapping
 
-`OwnerNotFoundIntegrationTests` is new: `@SpringBootTest(webEnvironment = RANDOM_PORT)` with
-`TestRestTemplate` against the default H2 database, like `CrashControllerIntegrationTests`.
-The two existing classes below are unmodified.
+`OwnerNotFoundIntegrationTests` is new. It uses `@SpringBootTest(webEnvironment = RANDOM_PORT)`
+with the full application context and the default H2 database, following
+`PetClinicIntegrationTests`. HTTP requests are issued with `@AutoConfigureTestRestTemplate` and an
+autowired `TestRestTemplate`; the persistent-state invariant is checked with an autowired
+`OwnerRepository`. The two existing classes below are unmodified;
+`CrashControllerIntegrationTests` is relevant here only as the existing verifier for AC-8.
 
 | AC | Test class | Test method | Request | Key assertion |
 | --- | --- | --- | --- | --- |
