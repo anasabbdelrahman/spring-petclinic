@@ -7,6 +7,12 @@ plan. The task list is deliberately not included; it belongs to the Tasks phase.
 Relationship to earlier artifacts: this plan supersedes `plan-owner-not-found-handling-2026-09.md`,
 which predates the approved specification. Section 3 records where the two differ and why.
 
+Amended once, after Task 1 and before Task 2, by the human review gate recorded in
+`review-gate-2026-09.md`: AC-5's verification (sections 4, 7, 8 risk 2, 9.4, 11, 12, 13), the
+demotion of the sibling-controller probes to an informational scope-leak check (sections 8 risk 6,
+10.5, 11), and the section 12 contradiction over the specification's `Status:` line. No change to the
+selected approach, and no production or test file was touched by the gate.
+
 ## 1. Current behavior and verified root cause
 
 Observed by running the application on this branch (`./gradlew bootRun`, default H2 profile,
@@ -103,8 +109,8 @@ The exception message keeps the owner ID for logs only and is asserted nowhere.
 | Inspecting the `IllegalArgumentException` message for `Owner not found` | Couples control flow to text that constraint 2 declares non-contractual. Fragile. |
 | Returning a 404 `ResponseEntity` or `ModelAndView` from each handler | Invasive: `initUpdateOwnerForm()` takes no arguments today, and the POST binds onto the object `findOwner` returns, so a null-owner path would break binding and move the check after binding, violating FR-4. It would also have to reproduce error-page rendering by hand. |
 | Changing `spring.web.error.*` or `spring.mvc.throw-exception-if-no-handler-found` | Section 6 puts error-related application properties out of scope, and neither affects a controller-thrown exception. |
-| A new `OwnerNotFoundExceptionTests` unit test (present in the superseded plan) | Asserts the annotation and the exception message, both implementation detail; section 8 of the specification enumerates exactly one new test class, and the integration tests already prove the observable 404 on all three routes. |
-| New MockMvc cases added to `OwnerControllerTests` (present in the superseded plan) | Section 8 declares that class unmodified, and MockMvc resolves the status without running the container error dispatch that AC-4 needs. |
+| A new `OwnerNotFoundExceptionTests` unit test (present in the superseded plan) | Asserts the annotation and the exception message, both implementation detail. The integration tests already prove the observable 404 on all three routes, so the class would add no failing witness for any acceptance criterion. Note the reasoning: section 8 of the specification is a coverage floor, not a ceiling - a test is added when a criterion clause has no witness, which is not the case here. |
+| New missing-owner MockMvc cases added to `OwnerControllerTests` (present in the superseded plan) | MockMvc resolves the status without running the container error dispatch that AC-4 needs, so a missing-owner case there would assert less than the integration test does. This rejects *new missing-owner cases only*. It does not bar Task 2 from adding the two AC-5 assertions to the existing `processUpdateOwnerFormSuccess` (section 7), which need no error dispatch. |
 | Asserting JSON body fields such as `error` or `path` (present in the superseded plan) | Section 6 puts JSON body shape out of scope; AC-1 specifies status only for the JSON request. |
 
 ## 4. Files created and modified
@@ -118,9 +124,14 @@ Modified:
 
 3. `src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java` - two `orElseThrow`
    lambdas only; no signature, mapping, annotation, or import changes.
+4. `src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java` - in Task 2
+   only, and only two added assertions inside the existing `processUpdateOwnerFormSuccess`:
+   `redirectedUrl("/owners/1")` and `verify(this.owners).save(any(Owner.class))`. No existing
+   assertion, fixture, mock stub, import, or other method changes. The required static imports for
+   `redirectedUrl`, `verify`, and `any` are already present in that file.
 
-Nothing else. Three files in the implementation diff, plus this plan document, which is a Plan-phase
-artifact and not part of the implementation.
+Nothing else. Four files across the feature - items 1 to 3 in Task 1, item 4 in Task 2 - plus this
+plan document, which is a Plan-phase artifact and not part of the implementation.
 
 ## 5. Classes, methods, annotations and fixtures involved
 
@@ -224,8 +235,9 @@ positive and two negative body assertions), `nonNumericOwnerIdReturnsBadRequest`
 
 **Step 11 - manual verification.** Section 10 in full, including the unchanged-boundary probes.
 
-**Step 12 - diff review.** `git status --short`, `git diff --check`, `git diff --stat`, confirm the
-three-file diff of section 4, then stage and run `/review-changes` per `HARNESS.md` before committing.
+**Step 12 - diff review.** `git status --short`, `git diff --check`, `git diff --stat`, confirm the diff
+matches what section 4 predicts for the task in hand - three files in Task 1, the two test files
+in Task 2 - then stage and run `/review-changes` per `HARNESS.md` before committing.
 
 ## 7. Acceptance criterion to verification mapping
 
@@ -235,7 +247,7 @@ three-file diff of section 4, then stage and run `/review-changes` per `HARNESS.
 | AC-2 | `OwnerNotFoundIntegrationTests.unknownOwnerEditFormReturnsNotFound` | `NOT_FOUND` for `GET /owners/9999/edit` | 9.3 |
 | AC-3 | `OwnerNotFoundIntegrationTests.unknownOwnerUpdateReturnsNotFoundAndChangesNoData` | `NOT_FOUND` for both POST bodies; after each: `owners.count()` unchanged, `owners.findById(9999)` empty, owner 1's five scalar fields unchanged | 9.3 |
 | AC-4 | `OwnerNotFoundIntegrationTests.unknownOwnerRendersEnglishNotFoundPage` | body contains `Something happened...` and `The requested page was not found.`; contains neither `An internal server error occurred.` nor `Whitelabel Error Page` | 9.3, plus manual 10.3 |
-| AC-5 | `OwnerControllerTests.showOwner`, `.initUpdateOwnerForm`, `.processUpdateOwnerFormSuccess` - existing, unmodified | `isOk()` plus view names and the `owner` model attribute including pets and visits for the GETs; `is3xxRedirection()` to `redirect:/owners/{ownerId}` for the POST. Confirmed already present at `OwnerControllerTests.java:199-221` and `:245-257` | 9.4 |
+| AC-5 | `OwnerControllerTests.showOwner` and `.initUpdateOwnerForm` - existing, unchanged; `.processUpdateOwnerFormSuccess` - existing, strengthened in Task 2 | `isOk()` plus view names and the `owner` model attribute, including the repository-returned owner's pets and their visits, for the GETs (already present at `OwnerControllerTests.java:199-209` and `:245-257`). For the POST, the existing `is3xxRedirection()` and `view().name("redirect:/owners/{ownerId}")` at `:211-221`, **plus** `redirectedUrl("/owners/1")` and `verify(this.owners).save(any(Owner.class))` added in Task 2. Rationale: the existing two assertions check the un-expanded view-name template and leave the save to a mocked repository, so AC-5's redirect-target and "the owner is saved" clauses had no assertion that would fail if either regressed - deleting `OwnerController.java:157` left the whole suite green | 9.4 |
 | AC-6 | `OwnerNotFoundIntegrationTests.nonNumericOwnerIdReturnsBadRequest` | `BAD_REQUEST` for `GET /owners/abc` | 9.3 |
 | AC-7 | `OwnerNotFoundIntegrationTests.paginationErrorIsNotTreatedAsNotFound` | `INTERNAL_SERVER_ERROR` for `GET /owners?page=0`, that is, not `NOT_FOUND` | 9.3 |
 | AC-8 | `CrashControllerIntegrationTests.triggerExceptionHtml` - existing, unmodified | `INTERNAL_SERVER_ERROR` for `GET /oups` | 9.5 |
@@ -250,8 +262,10 @@ Section 7 of the specification (error-case invariant) is covered by the AC-3 row
    pagination failures. Boundary: `GET /owners?page=0` stays 500 (AC-7). Review check: the diff
    contains no `@ExceptionHandler`, no `@ControllerAdvice`, and no `catch`.
 2. **Existing-owner behavior.** Changing only the exception type inside `orElseThrow` cannot alter the
-   present-`Optional` path. Boundary: AC-5 via the unmodified `OwnerControllerTests`; if any of those
-   three methods needs editing, the approach is wrong, not the test.
+   present-`Optional` path. Boundary: AC-5 via `OwnerControllerTests`. All three AC-5 methods keep
+   every existing assertion; Task 2 only *adds* two assertions to `processUpdateOwnerFormSuccess`. If
+   an existing assertion, the `george()` fixture, or a mock stub has to change to keep those methods
+   green, the approach is wrong, not the test.
 3. **Validation ordering on POST.** Relies on Spring MVC invoking `@ModelAttribute` methods before
    binding and validating the `@Valid Owner` argument. The invalid-form half of AC-3 is the guard: if
    ordering were reversed, that request would return 200 with field errors instead of 404.
@@ -264,10 +278,12 @@ Section 7 of the specification (error-case invariant) is covered by the AC-3 row
 6. **`PetController` and `VisitController` stay out of scope.** They have their own lookups
    (`PetController:67-70` and `:83-84`, `VisitController:66-67`) and still throw
    `IllegalArgumentException`, so `/owners/9999/pets/new`, `/owners/9999/pets/1/edit`, and
-   `/owners/9999/pets/1/visits/new` remain 500 - each confirmed by hand on this branch. Per the
+   `/owners/9999/pets/1/visits/new` return 500 today - each confirmed by hand on this branch. Per the
    approved Specify outcome, no acceptance criterion freezes those statuses, because doing so would
    pull explicitly out-of-scope behavior into the contract. They are instead protected structurally
-   (no cross-cutting handler) and checked once manually by section 10.5.
+   (no cross-cutting handler) and observed once by the informational scope-leak check in section 10.5.
+   That check looks for one thing only: a 404, which would mean this feature leaked across
+   controllers. Their exact status is out of scope; a non-404 change there is recorded, not failed.
 7. **Error-page rendering depends on `sendError` triggering the container's error dispatch.** Mitigated
    by the step 6 checkpoint before any test depends on it. Supporting evidence already gathered:
    `/no-such-page` renders the 404 branch and `/oups` renders the 500 branch in this application.
@@ -297,7 +313,8 @@ Section 7 of the specification (error-case invariant) is covered by the AC-3 row
 ./mvnw test -Dtest=OwnerNotFoundIntegrationTests
 ./gradlew test --tests "org.springframework.samples.petclinic.owner.OwnerNotFoundIntegrationTests" --rerun
 
-# 9.4 AC-5, unmodified
+# 9.4 AC-5. Existing methods unchanged; in Task 2 this class gains two assertions inside
+# processUpdateOwnerFormSuccess and nothing else.
 ./mvnw test -Dtest=OwnerControllerTests
 
 # 9.5 regression set, including AC-8
@@ -346,7 +363,9 @@ grep -o 'Whitelabel Error Page' /tmp/o9999.html
 curl -s -o /dev/null -w '%{http_code}\n' -H 'Accept: text/html' $B/owners/9999   # still 404
 curl -s -H 'Accept: text/html' "$B/owners?lastName=" | grep -c 'Franklin'        # owner 1 intact
 
-# 10.5 out-of-scope boundary: all three must stay 500
+# 10.5 informational scope-leak check, not a product criterion: all three return 500 today.
+# A 404 here means this feature leaked across controllers - investigate. Any other status is
+# out of scope (specification section 6) and is recorded rather than treated as a failure.
 curl -s -o /dev/null -w '%{http_code}\n' -H 'Accept: text/html' $B/owners/9999/pets/new
 curl -s -o /dev/null -w '%{http_code}\n' -H 'Accept: text/html' $B/owners/9999/pets/1/edit
 curl -s -o /dev/null -w '%{http_code}\n' -H 'Accept: text/html' $B/owners/9999/pets/1/visits/new
@@ -369,12 +388,16 @@ console reports no errors. Stop the application afterwards.
    view `owners/createOrUpdateOwnerForm`; `POST /owners/1/edit` with a valid form returns 3xx to
    `redirect:/owners/{ownerId}`.
 5. `GET /owners/abc` returns 400; `GET /owners?page=0` returns 500; `GET /oups` returns 500.
-6. `/owners/9999/pets/new`, `/owners/9999/pets/1/edit`, and `/owners/9999/pets/1/visits/new` still
-   return 500.
-7. All six methods of `OwnerNotFoundIntegrationTests` pass, and commands 9.4 and 9.5 pass with zero
-   failures and zero edits to those classes.
+6. None of `/owners/9999/pets/new`, `/owners/9999/pets/1/edit`, or `/owners/9999/pets/1/visits/new`
+   returns 404. **Informational, not a product criterion:** their exact status is out of scope
+   (specification section 6), and all three return 500 today. A 404 means cross-cutting leakage and
+   must be investigated; any other status is recorded in the closing document, not failed.
+7. All six methods of `OwnerNotFoundIntegrationTests` pass. Command 9.5 passes with zero failures and
+   zero edits to those classes. Command 9.4 passes with `OwnerControllerTests` edited in exactly one
+   place: the two AC-5 assertions added to `processUpdateOwnerFormSuccess` in Task 2.
 8. `./mvnw verify` and `./gradlew build` both succeed; any Docker-dependent skips are named explicitly.
-9. `git status --short` lists exactly three implementation files, and `git diff --check` reports nothing.
+9. `git status --short` lists exactly the section 4 files for the task in hand - three in Task 1, one
+   in Task 2 plus `OwnerNotFoundIntegrationTests.java` - and `git diff --check` reports nothing.
 10. The diff contains no `@ControllerAdvice`, no `@ExceptionHandler`, no `catch`, and no reference to
     `IllegalArgumentException` in `OwnerController`.
 
@@ -383,12 +406,20 @@ console reports no errors. Stop the application afterwards.
 - `src/main/resources/templates/error.html` and every file under `src/main/resources/messages/`.
 - `src/main/resources/application*.properties` and everything under `src/main/resources/db/`.
 - `PetController.java`, `VisitController.java`, `PetControllerTests.java`, `VisitControllerTests.java`.
-- `OwnerControllerTests.java` and `CrashControllerIntegrationTests.java` - the two classes section 8 of
-  the specification declares unmodified.
+- `CrashControllerIntegrationTests.java` - unmodified, per section 8 of the specification.
+- `OwnerControllerTests.java` apart from the two assertions Task 2 adds inside
+  `processUpdateOwnerFormSuccess`. No existing assertion, no fixture, no mock stub, no import, and no
+  other method in that class changes.
 - `OwnerRepository.java`, `Owner.java`, `Person.java`, `BaseEntity.java`, `NamedEntity.java`.
 - `pom.xml`, `build.gradle`, `src/checkstyle/*`, `PetClinicRuntimeHints.java`, `.editorconfig`.
-- `spec-owner-not-found-2026-09.md` and every other document in the repository root, including the
-  superseded `plan-owner-not-found-handling-2026-09.md`.
+- Every document in the repository root, including the superseded
+  `plan-owner-not-found-handling-2026-09.md`, with two stated exceptions so that this section and the
+  closing step no longer contradict each other. First, the human review gate held between Task 1 and
+  Task 2 amended `spec-owner-not-found-2026-09.md` - the AC-5 GET wording and the AC-5 test-mapping
+  row - together with this plan; see `review-gate-2026-09.md`. Second, the Task 3 closing step may
+  rewrite that specification's `Status:` line and nothing else in it (task list section 3.4.5).
+  Neither touches a functional requirement, an acceptance-criterion outcome, a constraint, a route, or
+  an example.
 - Behaviorally: the 400 for a non-numeric ID, the 500 for `?page=0`, the 500 for `/oups`, the 405 for
   unmapped methods, the 200-with-field-error for an unmatched last-name search, and the duplicate
   owner lookup in `showOwner`.
@@ -408,7 +439,9 @@ console reports no errors. Stop the application afterwards.
 6. JSON assertions - status only (section 3).
 7. No new `PetController` or `VisitController` acceptance criterion; the boundary is protected
    structurally and probed manually (risk 6).
-8. Whether `OwnerControllerTests` gains cases - no (section 3).
+8. Whether `OwnerControllerTests` gains cases - no new test method (section 3). It does gain two
+   assertions inside the existing `processUpdateOwnerFormSuccess`, decided at the Task 1 review gate
+   because AC-5's redirect-target and persistence clauses had no failing witness (section 7).
 
 The only item carrying residual technical uncertainty is risk 7, and step 6 resolves it by hand before
 any test depends on it.

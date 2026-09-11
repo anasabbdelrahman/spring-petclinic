@@ -66,8 +66,9 @@ deletes owner data.
 **AC-5** GIVEN owner 1 exists, its behavior is unchanged:
 
 - WHEN a client sends `GET /owners/1`, THEN the status is 200, the view is
-  `owners/ownerDetails`, and the `owner` model attribute contains the stored owner, pets,
-  and visits.
+  `owners/ownerDetails`, and the `owner` model attribute contains the requested owner,
+  including any associated pets and their visits. This clause does not require the seeded
+  owner 1 to have any particular pet or visit.
 - WHEN a client sends `GET /owners/1/edit`, THEN the status is 200, the view is
   `owners/createOrUpdateOwnerForm`, and the `owner` model attribute contains its current
   values.
@@ -133,8 +134,12 @@ count, the absence of owner 9999, and a control owner's stored values are unchan
 with the full application context and the default H2 database, following
 `PetClinicIntegrationTests`. HTTP requests are issued with `@AutoConfigureTestRestTemplate` and an
 autowired `TestRestTemplate`; the persistent-state invariant is checked with an autowired
-`OwnerRepository`. The two existing classes below are unmodified;
-`CrashControllerIntegrationTests` is relevant here only as the existing verifier for AC-8.
+`OwnerRepository`. `CrashControllerIntegrationTests` is unmodified and is relevant here only as the
+existing verifier for AC-8. `OwnerControllerTests` is **not** unmodified: it keeps every existing
+method, fixture, and assertion, and Task 2 adds the two assertions named in the AC-5 row below,
+because the redirect-target and persistence clauses of AC-5 otherwise have no assertion that would
+fail if they regressed. This mapping is the minimum required coverage, not a ceiling: a criterion
+clause lacking a failing witness is a defect in the mapping and is to be fixed here.
 
 | AC | Test class | Test method | Request | Key assertion |
 | --- | --- | --- | --- | --- |
@@ -142,7 +147,7 @@ autowired `TestRestTemplate`; the persistent-state invariant is checked with an 
 | AC-2 | `OwnerNotFoundIntegrationTests` | `unknownOwnerEditFormReturnsNotFound` | `GET /owners/9999/edit` | status is `NOT_FOUND` |
 | AC-3 | `OwnerNotFoundIntegrationTests` | `unknownOwnerUpdateReturnsNotFoundAndChangesNoData` | `POST /owners/9999/edit` with a valid form body, then with an invalid form body (blank `firstName`) | status is `NOT_FOUND` for both requests; after each: owner count equal to before, `findById(9999)` still empty, owner 1's stored values unchanged |
 | AC-4 | `OwnerNotFoundIntegrationTests` | `unknownOwnerRendersEnglishNotFoundPage` | `GET /owners/9999`, `Accept: text/html`, `Accept-Language: en` | body contains `Something happened...` and `The requested page was not found.`; does not contain `An internal server error occurred.` or `Whitelabel Error Page` |
-| AC-5 | `OwnerControllerTests` | `showOwner`, `initUpdateOwnerForm`, `processUpdateOwnerFormSuccess` (existing, unmodified) | `GET /owners/1`, `GET /owners/1/edit`, `POST /owners/1/edit` | `status().isOk()` and view names for the two GETs; `status().is3xxRedirection()` to `redirect:/owners/{ownerId}` for the POST |
+| AC-5 | `OwnerControllerTests` | `showOwner`, `initUpdateOwnerForm` (existing, unchanged); `processUpdateOwnerFormSuccess` (existing, strengthened in Task 2) | `GET /owners/1`, `GET /owners/1/edit`, `POST /owners/1/edit` | `status().isOk()`, the view names, and the `owner` model attribute for the two GETs. For the POST: the existing `status().is3xxRedirection()` and `view().name("redirect:/owners/{ownerId}")`, plus two assertions added in Task 2 - `redirectedUrl("/owners/1")` for the resolved redirect target, and `verify(this.owners).save(any(Owner.class))` as the failing witness for "the owner is saved" |
 | AC-6 | `OwnerNotFoundIntegrationTests` | `nonNumericOwnerIdReturnsBadRequest` | `GET /owners/abc` | status is `BAD_REQUEST` |
 | AC-7 | `OwnerNotFoundIntegrationTests` | `paginationErrorIsNotTreatedAsNotFound` | `GET /owners?page=0` | status is `INTERNAL_SERVER_ERROR`, that is, not `NOT_FOUND` |
 | AC-8 | `CrashControllerIntegrationTests` | `triggerExceptionHtml` (existing, unmodified) | `GET /oups` | status is `INTERNAL_SERVER_ERROR` |

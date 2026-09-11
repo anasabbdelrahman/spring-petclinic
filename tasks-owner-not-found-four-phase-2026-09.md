@@ -15,6 +15,10 @@ work is predictable, not so it is done now.
 
 - **Task 1 before Task 2.** Task 2 adds two methods to the test class Task 1 creates. Running Task 2
   first would leave the AC-6 and AC-7 assertions with no file to live in and no 404 behavior to guard.
+- **Amended after Task 1 by the human review gate** recorded in `review-gate-2026-09.md`. Task 2 now
+  also strengthens the existing `OwnerControllerTests.processUpdateOwnerFormSuccess`, because AC-5's
+  redirect-target and persistence clauses had no assertion that would fail if either regressed. Task 2
+  therefore modifies two test files and still no production file.
 - **Task 1 is independently committable** even though it omits the AC-6 and AC-7 methods. Its diff
   touches only the two `orElseThrow` lambdas in `OwnerController` plus one new exception class.
   Neither route in AC-6 or AC-7 reaches those lines: `GET /owners/abc` fails in path-variable
@@ -36,7 +40,7 @@ work is predictable, not so it is done now.
 | AC-2 | 404 for `GET /owners/9999/edit` | `unknownOwnerEditFormReturnsNotFound` | Task 1 |
 | AC-3 | 404 for `POST /owners/9999/edit`, valid and invalid form, no data change | `unknownOwnerUpdateReturnsNotFoundAndChangesNoData` | Task 1 |
 | AC-4 | English 404 error page body | `unknownOwnerRendersEnglishNotFoundPage` plus manual check 1.9.2 | Task 1 |
-| AC-5 | Owner 1 behavior unchanged | `OwnerControllerTests.showOwner`, `.initUpdateOwnerForm`, `.processUpdateOwnerFormSuccess`, unmodified | Task 1 as a non-regression guard; Task 2 as designated criterion coverage |
+| AC-5 | Owner 1 behavior unchanged | `OwnerControllerTests.showOwner` and `.initUpdateOwnerForm`, unchanged; `.processUpdateOwnerFormSuccess`, strengthened in Task 2 with `redirectedUrl("/owners/1")` and `verify(this.owners).save(any(Owner.class))` | Task 1 as a non-regression guard; Task 2 as designated criterion coverage, including the two added assertions |
 | AC-6 | `GET /owners/abc` stays 400 | `nonNumericOwnerIdReturnsBadRequest` | Task 2 |
 | AC-7 | `GET /owners?page=0` stays 500 | `paginationErrorIsNotTreatedAsNotFound` | Task 2 |
 | AC-8 | `GET /oups` stays 500 | `CrashControllerIntegrationTests.triggerExceptionHtml`, unmodified | Task 2 |
@@ -157,7 +161,8 @@ it. Address any finding it returns inside the three files of 1.3.
 
 ## 1.5 Must remain unchanged
 
-- `OwnerControllerTests.java` and `CrashControllerIntegrationTests.java`.
+- `OwnerControllerTests.java` and `CrashControllerIntegrationTests.java`. Task 1 changes neither; Task 2
+  adds two assertions to `OwnerControllerTests.processUpdateOwnerFormSuccess` and nothing else.
 - `PetController.java`, `VisitController.java`, `PetControllerTests.java`, `VisitControllerTests.java`.
 - `templates/error.html` and every file under `src/main/resources/messages/`.
 - `application*.properties`, everything under `src/main/resources/db/`, `pom.xml`, `build.gradle`,
@@ -281,8 +286,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 Task 2 adds exactly two methods to `OwnerNotFoundIntegrationTests`,
 `nonNumericOwnerIdReturnsBadRequest` and `paginationErrorIsNotTreatedAsNotFound`, asserting 400 for
-`GET /owners/abc` and 500 for `GET /owners?page=0`. It then runs `OwnerControllerTests` and
-`CrashControllerIntegrationTests` without editing either, and commits. It changes no production file.
+`GET /owners/abc` and 500 for `GET /owners?page=0`. It then adds exactly two assertions to the
+existing `OwnerControllerTests.processUpdateOwnerFormSuccess` - `redirectedUrl("/owners/1")` and
+`verify(this.owners).save(any(Owner.class))` - so that AC-5's redirect-target and persistence clauses
+have a failing witness. It runs `CrashControllerIntegrationTests` without editing it, and commits. It
+changes no production file.
 
 ---
 
@@ -291,19 +299,27 @@ Task 2 adds exactly two methods to `OwnerNotFoundIntegrationTests`,
 ## 2.1 Goal
 
 Prove that the Task 1 change did not reclassify the two failures that are easiest to catch by accident,
-and record AC-5 and AC-8 as verified by the existing unmodified tests.
+give AC-5's redirect-target and persistence clauses a failing witness, and record AC-8 as verified by
+its existing unmodified test.
 
 ## 2.2 Specification criteria covered
 
-AC-6, AC-7, constraint 3, and formal credit for AC-5 and AC-8.
+AC-6, AC-7, constraint 3, formal credit for AC-8, and formal credit for AC-5 - the last now including
+the two assertions this task adds to `processUpdateOwnerFormSuccess`, per the human review gate in
+`review-gate-2026-09.md`.
 
 ## 2.3 Exact files
 
 Modified:
 
-1. `src/test/java/org/springframework/samples/petclinic/owner/OwnerNotFoundIntegrationTests.java`
+1. `src/test/java/org/springframework/samples/petclinic/owner/OwnerNotFoundIntegrationTests.java` -
+   the AC-6 and AC-7 methods.
+2. `src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java` - two added
+   assertions inside the existing `processUpdateOwnerFormSuccess`, nothing else.
 
-No production file. No other test file.
+Exactly two files, both tests. No production file. No third test file: in particular, no
+existing-owner update test is added to `OwnerNotFoundIntegrationTests`, which stays focused on
+missing-owner behavior and introduces no state-changing existing-owner request.
 
 ## 2.4 Implementation steps
 
@@ -316,16 +332,35 @@ intent of the test is legible at the failure message. Add a one-line comment sta
 exists to prevent a broad `IllegalArgumentException`-to-404 mapping, per specification AC-7, and does
 not endorse 500 as the ideal pagination status.
 
-**2.4.3** Run `./mvnw spring-javaformat:apply`, then the commands in 2.7.
+**2.4.3** In `OwnerControllerTests.processUpdateOwnerFormSuccess` (currently
+`OwnerControllerTests.java:211-221`), keep the existing `status().is3xxRedirection()` and
+`view().name("redirect:/owners/{ownerId}")` and add exactly two assertions:
 
-**2.4.4** Confirm the class now holds exactly the six methods named in specification section 8.
+- `.andExpect(redirectedUrl("/owners/" + TEST_OWNER_ID))` - verifies the resolved redirect target that
+  AC-5 names, rather than the un-expanded `redirect:/owners/{ownerId}` view-name template.
+- `verify(this.owners).save(any(Owner.class))` after the `mockMvc.perform(...)` chain - the failing
+  witness for AC-5's "the owner is saved" clause. Without it, deleting `this.owners.save(owner)` from
+  `OwnerController.processUpdateOwnerForm` leaves the entire suite green.
 
-**2.4.5** Stage the file and ask the user to run `/review-changes`, then commit with 2.9 and stop.
+Add no new test method, no import, no fixture, and no mock stub: `redirectedUrl`, `verify`, and `any`
+are already statically imported in this file, `TEST_OWNER_ID` is already `1`, and `owners` is already
+the `@MockitoBean`. Change nothing in any other method of the class.
+
+**2.4.4** Run `./mvnw spring-javaformat:apply`, then the commands in 2.7.
+
+**2.4.5** Confirm `OwnerNotFoundIntegrationTests` now holds exactly the six methods named in
+specification section 8, and that `OwnerControllerTests` has the same method count as before with two
+added assertion lines in one method.
+
+**2.4.6** Stage the two files and ask the user to run `/review-changes`, then commit with 2.9 and stop.
 
 ## 2.5 Must remain unchanged
 
-Everything in 1.5, plus the three files Task 1 committed: `OwnerNotFoundException.java`,
-`OwnerController.java`, and the four existing methods of `OwnerNotFoundIntegrationTests.java`.
+Everything in 1.5 except the two assertions 2.4.3 adds, plus the three files Task 1 committed:
+`OwnerNotFoundException.java`, `OwnerController.java`, and the four existing methods of
+`OwnerNotFoundIntegrationTests.java`. In `OwnerControllerTests`: every other method, the `george()`
+fixture, the `setup()` stubs, the import list, and the two assertions
+`processUpdateOwnerFormSuccess` already makes.
 
 ## 2.6 Risks and stopping conditions
 
@@ -334,6 +369,12 @@ Everything in 1.5, plus the three files Task 1 committed: `OwnerNotFoundExceptio
 - If `paginationErrorIsNotTreatedAsNotFound` sees 404, a broad `IllegalArgumentException` mapping was
   introduced. Stop and report; this is the constraint 3 violation the test exists to catch.
 - If either test needs a change to a production file to pass, stop: Task 2 is test-only by definition.
+- If the added `verify(this.owners).save(any(Owner.class))` fails, stop and report: the POST no longer
+  reaches `this.owners.save(...)`, which is an AC-5 regression in production code, not a test problem.
+- If the added `redirectedUrl("/owners/1")` fails, stop and report the actual `Location`: AC-5 names
+  `/owners/1` as the redirect target. Do not relax the assertion to match the observed value.
+- If making either added assertion pass appears to require editing another method, the `george()`
+  fixture, or a mock stub, stop: the gate's premise was that nothing else in the class needs to move.
 
 ## 2.7 Verification commands
 
@@ -342,8 +383,16 @@ Everything in 1.5, plus the three files Task 1 committed: `OwnerNotFoundExceptio
 ./mvnw test -Dtest=OwnerNotFoundIntegrationTests
 ./gradlew test --tests "org.springframework.samples.petclinic.owner.OwnerNotFoundIntegrationTests" --rerun
 
-# 2.7.2 AC-5 and AC-8 by their existing unmodified classes
+# 2.7.2 AC-5 in the strengthened OwnerControllerTests, AC-8 in the unmodified
+# CrashControllerIntegrationTests
 ./mvnw test -Dtest='OwnerControllerTests,CrashControllerIntegrationTests'
+./gradlew test --tests "org.springframework.samples.petclinic.owner.OwnerControllerTests" --rerun
+
+# 2.7.2b failing-witness check for the two added assertions. Temporarily comment out
+# `this.owners.save(owner)` in OwnerController.processUpdateOwnerForm, re-run 2.7.2, and confirm
+# processUpdateOwnerFormSuccess now FAILS on the verify. Then restore the line immediately and
+# re-run 2.7.2 to confirm green. The production file must be byte-identical afterwards:
+git diff -- src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java  # must be empty
 
 # 2.7.3 style and diff shape
 ./mvnw validate
@@ -360,10 +409,15 @@ curl -s -o /dev/null -w '%{http_code}\n' -H 'Accept: text/html' "$B/owners?page=
 
 1. `OwnerNotFoundIntegrationTests` holds six methods, named exactly as in specification section 8, and
    all six pass under Maven and under Gradle.
-2. `OwnerControllerTests` and `CrashControllerIntegrationTests` pass with zero edits, evidenced by
-   their absence from `git status --short`.
-3. `GET /owners/abc` returns 400 and `GET /owners?page=0` returns 500, in the test and by curl.
-4. `git status --short` lists exactly one file, and `git diff --check` prints nothing.
+2. `CrashControllerIntegrationTests` passes with zero edits, evidenced by its absence from
+   `git status --short`.
+3. `OwnerControllerTests` passes, and its diff is exactly the two added assertions in
+   `processUpdateOwnerFormSuccess`: `git diff -- .../OwnerControllerTests.java` shows added lines only,
+   no deletions other than the reflow of the assertion chain, no method added or removed.
+4. The 2.7.2b failing-witness check behaved as required: `processUpdateOwnerFormSuccess` failed on the
+   `verify` with the save commented out, and `OwnerController.java` is unchanged afterwards.
+5. `GET /owners/abc` returns 400 and `GET /owners?page=0` returns 500, in the test and by curl.
+6. `git status --short` lists exactly the two files in 2.3, and `git diff --check` prints nothing.
 
 ## 2.9 Suggested commit message
 
@@ -375,9 +429,17 @@ throws the same IllegalArgumentException type that a missing owner used to
 throw, so these two assertions are what would fail if the 404 were ever
 reattached to that exception type rather than to OwnerNotFoundException.
 
-Completes the section 8 test mapping: AC-6 and AC-7 are now automated, AC-5 and
-AC-8 remain covered by OwnerControllerTests and
-CrashControllerIntegrationTests, both unmodified.
+Also strengthen OwnerControllerTests.processUpdateOwnerFormSuccess, which
+asserted only a 3xx and the un-expanded redirect:/owners/{ownerId} view name.
+Add redirectedUrl("/owners/1") for the resolved target AC-5 names, and
+verify(owners).save(any(Owner.class)) as a failing witness for its "the owner
+is saved" clause: deleting the save from OwnerController previously left the
+whole suite green. Two assertions in one existing method; no new test, fixture
+or import.
+
+Completes the section 8 test mapping: AC-6 and AC-7 are now automated, AC-5 is
+covered by the strengthened OwnerControllerTests, and AC-8 remains covered by
+CrashControllerIntegrationTests, unmodified.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 ```
@@ -385,7 +447,8 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 ## 2.10 What Task 3 will do
 
 Task 3 runs `./mvnw verify` and `./gradlew build`, performs the full manual sweep from plan section 10
-including the browser check and the three `PetController` and `VisitController` boundary probes, sets
+including the browser check and the informational `PetController` and `VisitController` scope-leak
+probes, whose exact status is out of scope and which fail only on a 404, sets
 the specification's `Status:` line to implemented without touching any requirement, criterion, or
 constraint, and writes a workflow evaluation document. It changes no code and no test.
 
@@ -423,8 +486,9 @@ No code file, no test file, no configuration file.
 Name the skipped classes in the evaluation document rather than reporting an unqualified green.
 
 **3.4.3** Start the app on port 8098 and run plan section 10.2 through 10.5 in full, including the
-three probes that must still return 500: `/owners/9999/pets/new`, `/owners/9999/pets/1/edit`, and
-`/owners/9999/pets/1/visits/new`.
+three informational scope-leak probes `/owners/9999/pets/new`, `/owners/9999/pets/1/edit`, and
+`/owners/9999/pets/1/visits/new`. Record their status; they return 500 today and their exact status is
+out of scope, so only a 404 is a failure.
 
 **3.4.4** With the app still running, open `http://localhost:8098/owners/9999` through Playwright MCP.
 Confirm the PetClinic header, navigation bar, and the not-found message render as a normal page rather
@@ -439,9 +503,10 @@ requirement, acceptance criterion, constraint, route, example, or test-mapping r
 
 **3.4.6** Write `four-phase-evaluation-2026-09.md` covering: what each phase caught that the previous
 one had missed, the two Specify-phase defects found by reading the repository, the Plan-phase
-correction to the `@ControllerAdvice` reasoning, the measured build and test results from 3.4.1, the
-browser evidence from 3.4.4, and one honest statement of what the four-phase workflow cost in time
-against what it prevented.
+correction to the `@ControllerAdvice` reasoning, the AC-5 failing-witness defect found by the human
+review gate between Task 1 and Task 2 (`review-gate-2026-09.md`), the measured build and test results
+from 3.4.1, the browser evidence from 3.4.4, and one honest statement of what the four-phase workflow
+cost in time against what it prevented.
 
 **3.4.7** Stage both documents, ask the user to run `/review-changes`, and commit with 3.8.
 
@@ -493,7 +558,9 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 1. `./mvnw verify` and `./gradlew build` both succeed, and any skipped Docker-dependent class is named.
 2. The nine status probes from plan section 10.2 return 404, 404, 404, 404, 200, 200, 400, 500, 500 in
    that order.
-3. The three sibling-controller probes from plan section 10.5 each return 500.
+3. None of the three sibling-controller probes from plan section 10.5 returns 404. Informational, not a
+   product criterion: all three return 500 today, their exact status is out of scope, and the recorded
+   value goes in the evaluation document. A 404 is a stop condition (3.6).
 4. A screenshot of `/owners/9999` shows the PetClinic layout with `The requested page was not found.`,
    and the recorded console output contains no error.
 5. `git diff -- spec-owner-not-found-2026-09.md` shows one changed line, the `Status:` line.
