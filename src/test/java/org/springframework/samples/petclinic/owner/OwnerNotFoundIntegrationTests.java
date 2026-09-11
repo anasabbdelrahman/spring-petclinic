@@ -108,6 +108,21 @@ class OwnerNotFoundIntegrationTests {
 		assertThat(response.getBody()).doesNotContain("Whitelabel Error Page");
 	}
 
+	@Test
+	void nonNumericOwnerIdReturnsBadRequest() {
+		ResponseEntity<String> response = get("/owners/abc", MediaType.TEXT_HTML);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+	}
+
+	@Test
+	void paginationErrorIsNotTreatedAsNotFound() {
+		// AC-7 guard: a broad IllegalArgumentException-to-404 mapping would
+		// reclassify this; 500 is not endorsed as the ideal pagination status.
+		ResponseEntity<String> response = get("/owners?page=0", MediaType.TEXT_HTML);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.NOT_FOUND);
+	}
+
 	private ResponseEntity<String> get(String path, MediaType accept) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setAccept(List.of(accept));
