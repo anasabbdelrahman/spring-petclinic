@@ -1,6 +1,6 @@
 # Specification: HTTP 404 for a Missing Owner - 2026-09
 
-Status: proposed. Scope: observable behavior only; the implementation approach is left open.
+Status: implemented on branch `homework/iterative-workflow`, verified by `OwnerNotFoundIntegrationTests`. Scope: observable behavior only; the implementation approach is left open.
 
 ## 1. Purpose
 
