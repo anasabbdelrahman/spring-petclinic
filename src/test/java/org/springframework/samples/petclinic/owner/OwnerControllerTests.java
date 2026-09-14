@@ -257,6 +257,16 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		verify(this.owners, times(1)).findById(TEST_OWNER_ID);
+	}
+
+	@Test
+	void showOwnerIgnoresRequestParameters() throws Exception {
+		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID).param("firstName", "Injected"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("owner", hasProperty("firstName", is("George"))))
+			.andExpect(view().name("owners/ownerDetails"));
 	}
 
 	@Test

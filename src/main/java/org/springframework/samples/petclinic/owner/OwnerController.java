@@ -17,7 +17,6 @@ package org.springframework.samples.petclinic.owner;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,7 +31,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.ModelAndView;
 
 import jakarta.validation.Valid;
 
@@ -161,16 +159,18 @@ class OwnerController {
 
 	/**
 	 * Custom handler for displaying an owner.
-	 * @param ownerId the ID of the owner to display
-	 * @return a ModelMap with the model attributes for the view
+	 * <p>
+	 * The owner is resolved once by {@link #findOwner(Integer)}, which adds it to the
+	 * model and raises {@link OwnerNotFoundException} for an unknown ID, so this handler
+	 * only selects the view. It takes no <code>Owner</code> argument on purpose: an
+	 * <code>@ModelAttribute</code> parameter would data-bind request parameters onto the
+	 * owner being displayed.
+	 * </p>
+	 * @return the view name for the owner details page
 	 */
 	@GetMapping("/owners/{ownerId}")
-	public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
-		ModelAndView mav = new ModelAndView("owners/ownerDetails");
-		Optional<Owner> optionalOwner = this.owners.findById(ownerId);
-		Owner owner = optionalOwner.orElseThrow(() -> new OwnerNotFoundException(ownerId));
-		mav.addObject(owner);
-		return mav;
+	public String showOwner() {
+		return "owners/ownerDetails";
 	}
 
 }
