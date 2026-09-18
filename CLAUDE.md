@@ -77,6 +77,23 @@ Source is organized **by domain feature**, not by technical layer. Each package 
 - `I18nPropertiesSyncTest` verifies the `messages_*.properties` translation files stay in sync — update all locale files when changing message keys.
 - `@WebMvcTest`-style controller tests (e.g. `OwnerControllerTests`) mock the repository layer; `ClinicServiceTests` exercises the JPA layer against H2.
 
+## Test plan
+
+- **Scope and risk** — Keep a change inside the feature package it belongs to (`owner/`, `vet/`, `system/`). The recurring risk areas repo-wide are custom validation, form binding and type conversion, persistence through the `Owner` aggregate, internationalized message keys, and date/time boundaries — for example, a visit date must be strictly after its reference date. Cover the risk areas a change actually touches.
+- **Test types and levels** — Plain JUnit, no Spring context, for pure logic (see `OwnerTests`); `@WebMvcTest` with a mocked repository for controllers (`OwnerControllerTests`); JPA against H2 (`ClinicServiceTests`); Docker-backed integration tests (`MySqlIntegrationTests`, `PostgresIntegrationTests`) — outside the default loop. Test pure logic at the unit level; add a controller test only for the wiring, not to re-prove the rule.
+- **Runner commands** — focused on every red/green step, full suite and formatting as the gates below require:
+
+```bash
+./gradlew test --tests "org.springframework.samples.petclinic.owner.<Class>Tests"   # focused
+./gradlew build                                                                     # full suite + checks
+./mvnw spring-javaformat:apply                                                      # formatting
+```
+
+- **Required case coverage** — the happy path; every boundary value plus one step either side of it; null and absent inputs, with the intended outcome stated up front; and independence from the wall clock (a rule driven by an explicit reference date must behave the same for dates in the real-world past and future).
+- **Testing rules** — Strict tests-first TDD: no production code until a test demands it, and the test that drove an implementation is never edited to accommodate it. Dates must be deterministic — never call `LocalDate.now()` inside logic under test or in an assertion; pass a reference date and use literal dates in fixtures. One behavior per test; `*Tests` suffix; mirror the production package.
+- **Red-phase gate** — format the new test; run the focused test; confirm it fails for the expected reason; capture the failure output; `git diff --check` clean; commit the failing test alone. The full build is **not** required to pass during this intentional red phase.
+- **Green-phase gate** — do not modify the committed tests; run the focused test and the relevant controller tests; run formatting; confirm formatting did not alter the committed tests; run the full build; `git diff --check` clean; commit the implementation separately. Then do a fresh-session overfitting review.
+
 ## Internationalization
 
 UI strings live in `src/main/resources/messages/messages*.properties` (11 locales). Add new keys to the base `messages.properties` and keep locale files in sync (enforced by `I18nPropertiesSyncTest`).
