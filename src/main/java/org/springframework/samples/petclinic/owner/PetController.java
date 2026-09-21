@@ -126,11 +126,7 @@ class PetController {
 			this.owners.saveAndFlush(owner);
 		}
 		catch (DataIntegrityViolationException ex) {
-			if (!isDuplicatePetNameViolation(ex)) {
-				throw ex;
-			}
-			result.rejectValue("name", "duplicate", "already exists");
-			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
+			return rejectDuplicateNameOrRethrow(ex, result);
 		}
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
 		return "redirect:/owners/{ownerId}";
@@ -207,6 +203,14 @@ class PetController {
 
 	private boolean isFutureBirthDate(Pet pet, LocalDate referenceDate) {
 		return pet.getBirthDate() != null && pet.getBirthDate().isAfter(referenceDate);
+	}
+
+	private String rejectDuplicateNameOrRethrow(DataIntegrityViolationException ex, BindingResult result) {
+		if (!isDuplicatePetNameViolation(ex)) {
+			throw ex;
+		}
+		result.rejectValue("name", "duplicate", "already exists");
+		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
 
 	private boolean isDuplicatePetNameViolation(DataIntegrityViolationException ex) {
