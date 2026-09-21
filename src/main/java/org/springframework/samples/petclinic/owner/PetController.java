@@ -113,7 +113,7 @@ class PetController {
 		}
 
 		LocalDate currentDate = LocalDate.now();
-		if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(currentDate)) {
+		if (isFutureBirthDate(pet, currentDate)) {
 			result.rejectValue("birthDate", "typeMismatch.birthDate");
 		}
 
@@ -203,6 +203,10 @@ class PetController {
 	// The update path compares ids, so it must not share this check.
 	private boolean isDuplicateNameForNewPet(Owner owner, Pet pet) {
 		return StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null;
+	}
+
+	private boolean isFutureBirthDate(Pet pet, LocalDate referenceDate) {
+		return pet.getBirthDate() != null && pet.getBirthDate().isAfter(referenceDate);
 	}
 
 	private boolean isDuplicatePetNameViolation(DataIntegrityViolationException ex) {
