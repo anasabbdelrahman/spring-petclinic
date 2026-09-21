@@ -108,7 +108,7 @@ class PetController {
 	public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result,
 			RedirectAttributes redirectAttributes) {
 
-		if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null) {
+		if (isDuplicateNameForNewPet(owner, pet)) {
 			result.rejectValue("name", "duplicate", "already exists");
 		}
 
@@ -197,6 +197,12 @@ class PetController {
 			owner.addPet(pet);
 		}
 		this.owners.saveAndFlush(owner);
+	}
+
+	// Creation-path semantics only: ignoreNew = true plus pet.isNew().
+	// The update path compares ids, so it must not share this check.
+	private boolean isDuplicateNameForNewPet(Owner owner, Pet pet) {
+		return StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null;
 	}
 
 	private boolean isDuplicatePetNameViolation(DataIntegrityViolationException ex) {
