@@ -27,17 +27,27 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -104,6 +114,41 @@ class PetControllerTests {
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 
+	@Test
+	void processCreationFormAddsFlashMessageOnSuccess() throws Exception {
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
+				.param("type", "hamster")
+				.param("birthDate", "2015-02-12"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "New Pet has been Added"));
+	}
+
+	@Test
+	void processCreationFormSavesOwnerExactlyOnceOnSuccess() throws Exception {
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
+				.param("type", "hamster")
+				.param("birthDate", "2015-02-12"))
+			.andExpect(status().is3xxRedirection());
+
+		verify(this.owners, times(1)).saveAndFlush(any(Owner.class));
+	}
+
+	@Test
+	void processCreationFormPropagatesUnrelatedDataIntegrityViolation() throws Exception {
+		DataIntegrityViolationException unrelated = new DataIntegrityViolationException("could not execute statement");
+		given(this.owners.saveAndFlush(any(Owner.class))).willThrow(unrelated);
+
+		Throwable thrown = catchThrowable(
+				() -> mockMvc.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
+					.param("type", "hamster")
+					.param("birthDate", "2015-02-12")));
+
+		assertThat(thrown).isNotNull();
+		assertThat(causeChain(thrown)).contains(unrelated);
+	}
+
 	@Nested
 	class ProcessCreationFormHasErrors {
 
@@ -128,6 +173,17 @@ class PetControllerTests {
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
+				.andExpect(model().attributeHasFieldErrorCode("pet", "name", "duplicate"))
+				.andExpect(status().isOk())
+				.andExpect(view().name("pets/createOrUpdatePetForm"));
+		}
+
+		@Test
+		void processCreationFormWithDuplicateNameIgnoringCase() throws Exception {
+			mockMvc
+				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "PETTY")
+					.param("type", "hamster")
+					.param("birthDate", "2015-02-12"))
 				.andExpect(model().attributeHasFieldErrorCode("pet", "name", "duplicate"))
 				.andExpect(status().isOk())
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
@@ -160,6 +216,22 @@ class PetControllerTests {
 				.andExpect(model().attributeHasFieldErrorCode("pet", "birthDate", "typeMismatch.birthDate"))
 				.andExpect(status().isOk())
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
+		}
+
+		@Test
+		void processCreationFormWithoutBirthDateReportsRequiredNotTypeMismatch() throws Exception {
+			MvcResult mvcResult = mockMvc
+				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
+					.param("type", "hamster"))
+				.andExpect(status().isOk())
+				.andExpect(view().name("pets/createOrUpdatePetForm"))
+				.andReturn();
+
+			ModelAndView modelAndView = mvcResult.getModelAndView();
+			assertThat(modelAndView).isNotNull();
+			BindingResult binding = (BindingResult) modelAndView.getModel().get(BindingResult.MODEL_KEY_PREFIX + "pet");
+			assertThat(binding).isNotNull();
+			assertThat(binding.getFieldErrors("birthDate")).extracting(FieldError::getCode).containsExactly("required");
 		}
 
 		@Test
@@ -269,6 +341,16 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	private static List<Throwable> causeChain(Throwable throwable) {
+		List<Throwable> chain = new ArrayList<>();
+		Throwable current = throwable;
+		while (current != null && !chain.contains(current)) {
+			chain.add(current);
+			current = current.getCause();
+		}
+		return chain;
 	}
 
 }
