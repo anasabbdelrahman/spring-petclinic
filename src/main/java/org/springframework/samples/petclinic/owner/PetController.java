@@ -108,12 +108,12 @@ class PetController {
 	public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result,
 			RedirectAttributes redirectAttributes) {
 
-		if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null) {
+		if (isDuplicateNameForNewPet(owner, pet)) {
 			result.rejectValue("name", "duplicate", "already exists");
 		}
 
 		LocalDate currentDate = LocalDate.now();
-		if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(currentDate)) {
+		if (isFutureBirthDate(pet, currentDate)) {
 			result.rejectValue("birthDate", "typeMismatch.birthDate");
 		}
 
@@ -126,11 +126,7 @@ class PetController {
 			this.owners.saveAndFlush(owner);
 		}
 		catch (DataIntegrityViolationException ex) {
-			if (!isDuplicatePetNameViolation(ex)) {
-				throw ex;
-			}
-			result.rejectValue("name", "duplicate", "already exists");
-			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
+			return rejectDuplicateNameOrRethrow(ex, result);
 		}
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
 		return "redirect:/owners/{ownerId}";
@@ -197,6 +193,24 @@ class PetController {
 			owner.addPet(pet);
 		}
 		this.owners.saveAndFlush(owner);
+	}
+
+	// Creation-path semantics only: ignoreNew = true plus pet.isNew().
+	// The update path compares ids, so it must not share this check.
+	private boolean isDuplicateNameForNewPet(Owner owner, Pet pet) {
+		return StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null;
+	}
+
+	private boolean isFutureBirthDate(Pet pet, LocalDate referenceDate) {
+		return pet.getBirthDate() != null && pet.getBirthDate().isAfter(referenceDate);
+	}
+
+	private String rejectDuplicateNameOrRethrow(DataIntegrityViolationException ex, BindingResult result) {
+		if (!isDuplicatePetNameViolation(ex)) {
+			throw ex;
+		}
+		result.rejectValue("name", "duplicate", "already exists");
+		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
 
 	private boolean isDuplicatePetNameViolation(DataIntegrityViolationException ex) {
