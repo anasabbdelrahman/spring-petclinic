@@ -148,7 +148,7 @@ localized `error.400` support across all 11 locale files, scoped and estimated o
   property. So the echo recorded at `four-phase-evaluation-2026-09.md:255-268` is a local-dev
   behavior, not a packaged or deployed one - which narrows, but does not remove, the concern that
   note raised. **Exact exception text stays outside this acceptance contract** either way: no row
-  asserts it, and the characterization tests committed in `8229a45` assert the shared layout and the
+  asserts it, and the characterization tests committed in `de7c7d0` assert the shared layout and the
   status-specific message only. The standing invariant remains a constraint on the implementation,
   not a contract clause: treat every exception message as potentially client-visible, because the
   property is one line away from being set, and keep secrets and internal details out of it.
