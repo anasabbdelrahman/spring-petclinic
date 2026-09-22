@@ -175,7 +175,7 @@ staleness check at the end of section 4 before proposing work.
 
 | Date | It. | Technique (supplement) | Invariant that governs the diff | Macro phase | Target | Commit |
 |---|---|---|---|---|---|---|
-| _pending_ | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | _pending_ |
+| 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | this commit — Characterize /vets.html page contract (plan-step 1/4) |
 | _pending_ | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | _pending_ |
 | _pending_ | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | _pending_ |
 | _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection | _pending_ |
@@ -212,9 +212,11 @@ Codebase-specific rules that must hold in every prompt touching this migration:
   cannot observe it, and do not infer which exception produced a status from a `TestRestTemplate`
   response - exception identity is an MVC-layer assertion. A `@WebMvcTest` remains the right level
   for `Pageable` capture and for resolved-exception assertions.
-- **Exception messages reach the client.** `error.html:18` renders `${message}` unconditionally,
-  so `InvalidVetPageException`'s message must carry nothing beyond the client's own numeric page
-  value.
+- **Exception message visibility is environment-dependent.** `error.html` attempts to render
+  `${message}`, but message inclusion is environment-dependent. The measured `bootRun` environment
+  with devtools included the exception message, while `@SpringBootTest` omitted it. Treat every
+  exception message as potentially client-visible and never put secrets or internal details in it,
+  but do not assert exact message text unless a specification makes it contractual.
 - **Do not add a message key.** A 400 falls to `#{error.general}` ("An unexpected error
   occurred."), because `error.html:11-15` has no 400 case and the bundle has no `error.400`
   (`messages.properties:50-52`). That imprecise body is an accepted, recorded gap for this
@@ -273,12 +275,24 @@ decision and a note saying why the mode no longer applies.
 - **Infers exception identity from an HTTP status.** Two different mechanisms produce 400 on this
   endpoint - parameter type mismatch for `?page=abc`, and `InvalidVetPageException` for
   `?page=0`. A `TestRestTemplate` response cannot tell them apart.
+- **Confuses devtools behavior with packaged/test behavior.** `bootRun` exposed the exception
+  message while `@SpringBootTest` omitted it. Defence: verify behavior in the execution mode used
+  by the acceptance test and treat local-dev observations separately.
+- **Trusts a formatter's success without inspecting its diff.** spring-javaformat mangled Javadoc
+  containing an inline table tag and then converged on the malformed result. Defence: inspect the
+  formatted diff and run a second idempotence pass; prefer prose where inline HTML is unstable.
+- **Reports the wrong command status after a pipeline.** `command | tail; echo $?` reported the
+  status of `tail`, not the build command. Defence: run the command without a pipeline or enable
+  pipefail and preserve the originating command's exit status.
 - _pending - populate from the reviewer checks as iterations land._
 
 ### 6. Macro-pattern migration state - Branch-by-Abstraction
 
-- [ ] **Phase 0 - Characterize.** `/vets.html` page domain pinned, including today's 500s.
-      Commit: _pending_
+- [x] **Phase 0 - Characterize.** `/vets.html` page domain pinned, including today's 500s.
+      Commit: this commit — Characterize /vets.html page contract (plan-step 1/4), 2026-09-22.
+      `VetPaginationCharacterizationTests`, 8 tests, all green; whole suite 99 tests, 0
+      failures, 0 errors, 0 skipped. Every expected value was captured by running the
+      unmodified application and recording its responses, not copied from a prior document.
 - [ ] **Phase 1 - Abstract.** Page translation behind a seam; behavior identical. Commit: _pending_
 - [ ] **Phase 2 - Implement.** Validating translation and `InvalidVetPageException` added, **not
       selected**. Commit: _pending_
@@ -294,14 +308,32 @@ decision and a note saying why the mode no longer applies.
       commit. Deleting on test evidence alone would contradict the invariant and must be recorded
       as such if chosen.
 
-**Open items.** The assertion that distinguishes `?page=0`'s 400 from `?page=abc`'s 400 is an
-MVC-layer question, and it splits across two iterations because the type it names does not exist
-yet. **Iteration 1** may characterize today's behavior - `?page=0` raising
-`IllegalArgumentException` from `PageRequest.of` - and establish whether this MVC harness can
-inspect resolved exceptions at all. `InvalidVetPageException` is not created until **Iteration 3**
-and is not selected until **Iteration 4**, so the assertion that `?page=0` resolves
-`InvalidVetPageException` while `?page=abc` fails during argument binding belongs to
-**Iteration 4**. It is not an AC-D1 row at either point.
+**Open items.** None blocking. The MVC capability question is **answered**, measured 2026-09-22
+with a throwaway `@WebMvcTest(VetController.class)` probe that was run and then deleted unstaged:
+
+- `?page=0` and `?page=-1` - `mockMvc.perform` **throws** `jakarta.servlet.ServletException`, root
+  cause `java.lang.IllegalArgumentException: Page index must not be less than zero`. There is **no
+  resolved exception**, because nothing resolves it; the harness can inspect only the *propagated*
+  exception.
+- `?page=abc` - `mockMvc.perform` **returns**, status 400, and `getResolvedException()` is
+  `org.springframework.web.method.annotation.MethodArgumentTypeMismatchException`, resolved by
+  `DefaultHandlerExceptionResolver`.
+
+Consequence for Iteration 4, now observed rather than inferred: the two 400s will differ in *kind*
+at the MVC layer, not merely in value. Once `InvalidVetPageException` carries `@ResponseStatus`,
+`ResponseStatusExceptionResolver` should resolve it, making the discriminator
+`getResolvedException()` being `InvalidVetPageException` for `?page=0` versus
+`MethodArgumentTypeMismatchException` for `?page=abc`. That type is not created until **Iteration
+3** and not selected until **Iteration 4**, so the assertion belongs to **Iteration 4**. It is not
+an AC-D1 row at any point.
+
+**Observed but deliberately not asserted.** Under `gradlew bootRun` the 500 page body contains the
+framework string `Page index must not be less than zero`; under `@SpringBootTest` the same page
+renders an empty exception paragraph. The difference is `spring-boot-devtools`, which is
+`developmentOnly` (`build.gradle:49`) and sets `server.error.include-message=always`. Nothing in
+`src/main/resources/` configures that property, so the echo is a local-dev behavior only, not a
+deployed one. The committed characterization therefore asserts the shared layout and the
+status-specific message and says nothing about the exception text.
 
 **Decisions log.** 400 on HTTP-semantic grounds, not 404 - the earlier 404 preference was a
 view-reuse convenience and was corrected. The 400 body text is outside the contract and no message

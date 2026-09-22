@@ -137,11 +137,21 @@ localized `error.400` support across all 11 locale files, scoped and estimated o
   mismatch for row 7, and `InvalidVetPageException` for rows 1-2. That distinction is a **design
   note**, not an externally observable clause, and a `TestRestTemplate` response cannot tell the two
   apart. If it is asserted at all it is asserted at the MVC layer - see section 3.1.
-- **The exception message text.** `error.html:18` renders `${message}` unconditionally
-  (VERIFIED), which is pre-existing behavior recorded at
-  `four-phase-evaluation-2026-09.md:255-268`. The standing invariant that follows is a constraint on
-  the implementation, not a contract clause: the message must carry nothing beyond the client's own
-  numeric page value.
+- **The exception message text.** `error.html:18` always contains the `${message}` expression, with
+  no surrounding condition (VERIFIED). Whether the container populates it is
+  **environment-dependent**, and that distinction was not drawn when this document was first
+  written. Measured 2026-09-22 on the same 500 response: under `gradlew bootRun` the body contained
+  the framework string `Page index must not be less than zero`, while under
+  `@SpringBootTest(webEnvironment = RANDOM_PORT)` the same page rendered an empty exception
+  paragraph. The cause is `spring-boot-devtools`, which is `developmentOnly` (`build.gradle:49`) and
+  sets `server.error.include-message=always`; nothing under `src/main/resources/` configures that
+  property. So the echo recorded at `four-phase-evaluation-2026-09.md:255-268` is a local-dev
+  behavior, not a packaged or deployed one - which narrows, but does not remove, the concern that
+  note raised. **Exact exception text stays outside this acceptance contract** either way: no row
+  asserts it, and the characterization tests committed in `8229a45` assert the shared layout and the
+  status-specific message only. The standing invariant remains a constraint on the implementation,
+  not a contract clause: treat every exception message as potentially client-visible, because the
+  property is one line away from being set, and keep secrets and internal details out of it.
 - **Response timing, cache behavior, row ordering.** Ordering is PAID D3 and explicitly out of
   scope; an unordered paginated query means rows 3-6 assert row *counts* and model attributes, not
   which vet appears on which page.
