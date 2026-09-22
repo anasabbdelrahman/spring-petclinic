@@ -176,7 +176,7 @@ staleness check at the end of section 4 before proposing work.
 | Date | It. | Technique (supplement) | Invariant that governs the diff | Macro phase | Target | Commit |
 |---|---|---|---|---|---|---|
 | 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | this commit — Characterize /vets.html page contract (plan-step 1/4) |
-| _pending_ | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | _pending_ |
+| 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | this commit — Extract vet page request translation behind a seam (plan-step 2/4) |
 | _pending_ | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | _pending_ |
 | _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection | _pending_ |
 
@@ -284,6 +284,12 @@ decision and a note saying why the mode no longer applies.
 - **Reports the wrong command status after a pipeline.** `command | tail; echo $?` reported the
   status of `tail`, not the build command. Defence: run the command without a pipeline or enable
   pipefail and preserve the originating command's exit status.
+- **Cites a rewritten commit's pre-amend SHA.** `acceptance-2026-09.md:151` named `8229a45` as the
+  commit carrying `VetPaginationCharacterizationTests`; that object is unreachable from HEAD - no
+  branch contains it, `git merge-base --is-ancestor` says no - and `de7c7d0` is the landed one, with
+  the same subject and committer timestamp. Defence: cite commits by the `this commit — <subject>`
+  convention this ledger already uses, and check any SHA appearing in a document with
+  `git merge-base --is-ancestor` before trusting it.
 - _pending - populate from the reviewer checks as iterations land._
 
 ### 6. Macro-pattern migration state - Branch-by-Abstraction
@@ -293,7 +299,18 @@ decision and a note saying why the mode no longer applies.
       `VetPaginationCharacterizationTests`, 8 tests, all green; whole suite 99 tests, 0
       failures, 0 errors, 0 skipped. Every expected value was captured by running the
       unmodified application and recording its responses, not copied from a prior document.
-- [ ] **Phase 1 - Abstract.** Page translation behind a seam; behavior identical. Commit: _pending_
+- [x] **Phase 1 - Abstract.** Page translation behind a seam; behavior identical.
+      Commits: `Add tests for the vet page request translation` (red, `:compileTestJava` failing
+      with "cannot find symbol: variable VetPageRequests") and this commit — Extract vet page
+      request translation behind a seam (plan-step 2/4) (green), both 2026-09-22.
+      `VetPageRequests.unvalidated` is the seam and `VetController.findPaginated` its only caller.
+      `VetPageRequestsTests`, 9 tests, green; `VetPaginationCharacterizationTests` proved
+      byte-identical to its `de7c7d0` revision by `git diff --exit-code` and its 8 tests still
+      green, the two 500s included; whole suite 108 tests, 0 failures, 0 errors, 0 skipped. Two
+      commits, not one: no section 4 carve-out covers this iteration, so the repo-wide tests-first
+      gate applies in full. Reverting Iteration 2 therefore means reverting both, newest first -
+      reverting only the green commit would leave the committed tests referencing a type that no
+      longer exists.
 - [ ] **Phase 2 - Implement.** Validating translation and `InvalidVetPageException` added, **not
       selected**. Commit: _pending_
 - [ ] **Phase 3 - Toggle.** Validating translation selected; **functional criterion AC-D1 met**.
@@ -326,6 +343,17 @@ at the MVC layer, not merely in value. Once `InvalidVetPageException` carries `@
 `MethodArgumentTypeMismatchException` for `?page=abc`. That type is not created until **Iteration
 3** and not selected until **Iteration 4**, so the assertion belongs to **Iteration 4**. It is not
 an AC-D1 row at any point.
+
+**Newly recorded, Iteration 2 - an input no AC-D1 row covers.** `GET /vets.html?page=-2147483648`
+answers **200 with an empty table today, not 500**: `page - 1` overflows to `Integer.MAX_VALUE`,
+which is a legal page index. VERIFIED from spring-data-commons 4.1.0 `AbstractPageRequest:46-58`,
+whose only rejection is `pageNumber < 0`, and `:71-73`, whose `getOffset` uses long arithmetic so
+`Integer.MAX_VALUE * 5` does not overflow either; pinned by
+`VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected`, which passes.
+Consequence for Iteration 4: a `page < 1` bound turns this input from 200 into 400. That is a
+behavior change **outside** the frozen criterion - to be decided in Iteration 3 or 4 and, if
+accepted, recorded as an `acceptance-2026-09.md` section 7 amendment with a date and a reason,
+never absorbed silently.
 
 **Observed but deliberately not asserted.** Under `gradlew bootRun` the 500 page body contains the
 framework string `Page index must not be less than zero`; under `@SpringBootTest` the same page
