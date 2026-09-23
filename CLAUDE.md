@@ -157,7 +157,10 @@ staleness check at the end of section 4 before proposing work.
   `VetController.findPaginated` (`VetController.java:57-59`) delegates to
   `VetPageRequests.unvalidated` (`VetPageRequests.java:51-53`), which calls
   `PageRequest.of(page - 1, PAGE_SIZE)` (`VetPageRequests.java:52`) with `PAGE_SIZE = 5`
-  (`VetPageRequests.java:38`). The missing bound is unchanged; only its location moved.
+  (`VetPageRequests.java:38`). The missing bound is unchanged; only its location moved. Since
+  Iteration 3 a bounded translation exists beside it - `VetPageRequests.validated`
+  (`VetPageRequests.java:61-66`) - but nothing calls it, so the pathology stays live until
+  Iteration 4 selects it.
 - **Pagination unobserved by the existing tests:** the existing `VetControllerTests` do not
   observe pagination because they stub `findAll(any(Pageable.class))`
   (`VetControllerTests.java:77-78`) and do not capture or assert the `Pageable`. A new
@@ -182,8 +185,8 @@ staleness check at the end of section 4 before proposing work.
 |---|---|---|---|---|---|---|
 | 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | Characterize /vets.html page contract (plan-step 1/4) — green only, carve-out 1 |
 | 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | red: Add tests for the vet page request translation; green: Extract vet page request translation behind a seam (plan-step 2/4) |
-| _pending_ | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | _pending_ |
-| _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection | _pending_ |
+| 2026-09-23 | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | characterization (green only, carve-out 4): Characterize Integer.MIN_VALUE page on /vets.html (plan-step 3/4, carve-out 4); red: Add tests for the validating vet page translation; green: Add validating vet page translation, unselected (plan-step 3/4) |
+| _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection, and `@ResponseStatus(HttpStatus.BAD_REQUEST)` on `InvalidVetPageException` (deferred from Iteration 3, decided 2026-09-23) | _pending_ |
 
 **One row per numbered implementation iteration** - the four of this migration's plan - and never
 one row per commit. An iteration that lands as a red/green pair occupies a single row that names
@@ -386,6 +389,10 @@ them as defects.
   javadoc's claim that it "must keep passing unchanged" stays true and stays uninformative. This is
   a recorded consequence of leaving Phase 4 open on purpose, not an oversight; it closes when
   Phase 4 closes, and not before.
+- **Recorded at Iteration 3: the class javadoc now under-describes the file.** Iteration 3
+  appended five `validated*` tests to `VetPageRequestsTests`, as Amendment 1's test mapping
+  directs, so the class javadoc's "pin the extracted translation ... and nothing more" no longer
+  describes the whole file. It is left unedited under the no-edit rule for committed tests.
 
 ### 6. Macro-pattern migration state - Branch-by-Abstraction
 
@@ -406,8 +413,23 @@ them as defects.
       gate applies in full. Reverting Iteration 2 therefore means reverting both, newest first -
       reverting only the green commit would leave the committed tests referencing a type that no
       longer exists.
-- [ ] **Phase 2 - Implement.** Validating translation and `InvalidVetPageException` added, **not
-      selected**. Commit: _pending_
+- [x] **Phase 2 - Implement.** Validating translation and `InvalidVetPageException` added, **not
+      selected**. Commits, all 2026-09-23: `Characterize Integer.MIN_VALUE page on /vets.html
+      (plan-step 3/4, carve-out 4)` (green only, carve-out 4, pinning today's 500), `Add tests for
+      the validating vet page translation` (red, `:compileTestJava` failing with 8 "cannot find
+      symbol" errors - `class InvalidVetPageException` and `method validated(int)` only) and `Add
+      validating vet page translation, unselected (plan-step 3/4)` (green, first attempt, no
+      corrective commit). `VetPageRequests.validated` rejects every `page < 1` and otherwise
+      returns `PageRequest.of(page - 1, PAGE_SIZE)`; `unvalidated` is unchanged and
+      `VetController.findPaginated` still calls it, so behavior is identical.
+      `VetPageRequestsTests` 14 tests green (9 unchanged plus 5 new);
+      `VetPaginationCharacterizationTests` 9 green, all three 500s included; both proved unchanged
+      since the red commit by `git diff --exit-code`; whole suite 114 tests, 0 failures, 0 errors,
+      0 skipped. Failing witnesses run and reverted: with `page - 1 < 0` only
+      `validatedRejectsIntegerMinValue` fails; with no bound all three `validatedRejects*` fail.
+      **`@ResponseStatus` is deliberately absent** - no Iteration 3 test demands it; Iteration 4's
+      HTTP contract test fails first and then drives both the selection and the status binding in
+      one behavioral change (decided 2026-09-23).
 - [ ] **Phase 3 - Toggle.** Validating translation selected; **functional criterion AC-D1 met**.
       Commit: _pending_
 - [ ] **Phase 4 - Remove. OPEN, and expected to stay open. The macro-pattern migration is

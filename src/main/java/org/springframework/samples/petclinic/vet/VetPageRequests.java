@@ -22,11 +22,11 @@ import org.springframework.data.domain.Pageable;
  * Translates the one-based {@code page} request parameter of {@code GET /vets.html} into
  * the zero-based {@link Pageable} the repository expects.
  * <p>
- * Extracted from {@code VetController.findPaginated} with no change of behavior. The
- * translation applies no bound of its own, so a {@code page} whose predecessor is
- * negative reaches {@link PageRequest#of(int, int)} as a negative index and raises
- * {@link IllegalArgumentException} - the behavior
- * {@code VetPaginationCharacterizationTests} pins as an HTTP 500.
+ * Two translations sit behind this seam. {@link #unvalidated(int)}, extracted from
+ * {@code VetController.findPaginated} unchanged, applies no bound of its own and is the
+ * one the controller calls. {@link #validated(int)} rejects every page below 1 with
+ * {@link InvalidVetPageException} and is not yet called. For a page they both accept,
+ * both apply the same page size and the same one-based to zero-based translation.
  * </p>
  */
 final class VetPageRequests {
@@ -49,6 +49,19 @@ final class VetPageRequests {
 	 * {@code Integer.MIN_VALUE} does not reach that branch.
 	 */
 	static Pageable unvalidated(int page) {
+		return PageRequest.of(page - 1, PAGE_SIZE);
+	}
+
+	/**
+	 * Translates a one-based page number, rejecting every page below 1.
+	 * @param page the one-based page number taken from the request
+	 * @return a page request for index {@code page - 1} at the fixed page size
+	 * @throws InvalidVetPageException if {@code page} is less than 1
+	 */
+	static Pageable validated(int page) {
+		if (page < 1) {
+			throw new InvalidVetPageException();
+		}
 		return PageRequest.of(page - 1, PAGE_SIZE);
 	}
 
