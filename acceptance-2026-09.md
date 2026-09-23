@@ -346,6 +346,71 @@ translation is `VetPageRequests.java:52`; and `VetController.findPaginated` is
 `VetController.java:57-59`. Section 8's `VetController.java:44-48`, `:50-57`, `:59-63` and `:65-72`
 are stale by the same shift. The criterion itself is unaffected - only the citations moved.
 
+### Amendment 2 - 2026-09-23 - row 11's baseline is 500, not 200
+
+**This amendment corrects a recorded fact; it changes no criterion.** Row 11's required outcome
+stands exactly as Amendment 1 states it: `GET /vets.html?page=-2147483648` answers **400** after the
+Toggle, through `error.html` and the shared layout, identical to rows 1 and 2. The rule Amendment 1
+states - every `int` value of `page` strictly below 1 answers 400 - is unchanged. Amendment 1 is not
+rewritten; this amendment is read together with it and supersedes it where the two disagree.
+
+**Old text.** Amendment 1, row 11, "vs. today": **CHANGED** from 200 with an empty table. Its reason
+paragraph states that the input "answers **200 with an empty table today, not 500**".
+
+**New text.** Row 11, "vs. today": **CHANGED** from **500 through the existing error page** - the
+same baseline as rows 1 and 2.
+
+**Reason.** The 200 was inferred from the page-request layer and never observed over HTTP. On
+2026-09-23 Iteration 3's planned characterization method, asserting 200 and zero rows, failed at
+`@SpringBootTest(webEnvironment = RANDOM_PORT)` level with `expected: 200 OK but was: 500
+INTERNAL_SERVER_ERROR`. The mechanism, VERIFIED:
+
+1. `page - 1` wraps: `Integer.MIN_VALUE - 1` is `Integer.MAX_VALUE` (`VetPageRequests.java:52`).
+2. `PageRequest` accepts `Integer.MAX_VALUE` as a page index - its only rejection is
+   `pageNumber < 0` - and computes the offset in `long` arithmetic without overflow
+   (spring-data-commons 4.1.0 `AbstractPageRequest:46-58, 71-73`). This layer is still correctly
+   pinned by `VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected`,
+   which needs no change.
+3. Spring Data JPA rejects the resulting offset, `Integer.MAX_VALUE * 5`, because it exceeds
+   `Integer.MAX_VALUE`: spring-data-jpa 4.1.0 `PageableUtils.getOffsetAsInteger`, `:41-43`, throws
+   `InvalidDataAccessApiUsageException: Page offset exceeds Integer.MAX_VALUE (2147483647)`. Nothing
+   resolves it, so the request answers 500.
+
+A throwaway `@SpringBootTest` probe, run on 2026-09-23 and deleted unstaged, recorded for this
+request: status 500; the layout title, `Something happened...` and the `error.500` text present;
+no Whitelabel page; the exception message not rendered. These are exactly the assertions the page-0
+and page-(-1) characterization methods make.
+
+**Consequences.**
+
+- **The planned characterization method is renamed.** Amendment 1's
+  `integerMinValuePageServesAnEmptyTable` becomes
+  `integerMinValuePageIsInternalServerErrorAndRendersErrorPage`, matching
+  `pageZeroIsInternalServerErrorAndRendersErrorPage` and
+  `negativePageIsInternalServerErrorAndRendersErrorPage`. It still lands green, as its own commit,
+  before Iteration 3's red/green pair, and asserts today's 500 with the same body assertions.
+- **Iteration 4 changes all three characterized cases from 500 to 400** - `?page=0`, `?page=-1`
+  and `?page=-2147483648`. No characterized status moves from 200.
+- **Amendment 1's concern is withdrawn, not its row.** Amendment 1 justified the extra
+  characterization as a *before* witness for a 200 -> 400 transition the frozen criterion did not
+  authorize. There is no such transition: row 11 moves 500 -> 400 by the same path as rows 1 and 2.
+  The method is still worth landing, because row 11's 500 arises from a different exception - in
+  the persistence layer, not `PageRequest.of` - and nothing else pins it at HTTP level.
+- **Row 11's failing witness still holds.** With `page - 1 < 0` substituted for `page < 1`,
+  `Integer.MIN_VALUE` passes the bound and reaches the persistence layer, answering 500 rather than
+  400, so `integerMinValuePageIsBadRequest` still fails - by 500 now, not by 200.
+
+**OPEN, INFERRED follow-up - not a criterion row.** The same persistence-layer check should make
+large *positive* pages answer 500 today: the offset `(page - 1) * 5` exceeds `Integer.MAX_VALUE`
+for `page` at or above 429496731. INFERRED from `PageableUtils:41` and the arithmetic; no request
+was made. The validating translation's `page < 1` bound does not reach those values, and row 6's
+`?page=999` is far below them. The upper end of `page` is already a separate product decision
+(section 2.4); this amendment adds no criterion, test or production code for it.
+
+**Not changed by this amendment.** Rows 1-10 and row 11's 400 outcome; the rule shared by rows 1, 2
+and 11; the 400 body text staying outside the contract; no message key; no kill-switch condition
+engaged.
+
 ## 8. Evidence references
 
 Source and configuration, VERIFIED in this repository:

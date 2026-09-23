@@ -196,7 +196,7 @@ its absence from this table is correct rather than a discrepancy:
 | Kind | Tracked in | Landed so far |
 |---|---|---|
 | Setup | this ledger's section 1 (header, criterion, kill switches) | `Charter vet pagination migration (setup)` |
-| Acceptance amendment | `acceptance-2026-09.md` section 7, dated and reasoned | Amendment 1, 2026-09-23 |
+| Acceptance amendment | `acceptance-2026-09.md` section 7, dated and reasoned | Amendments 1 and 2, 2026-09-23 |
 | Ledger maintenance | the section whose text it corrects | `Fix stale characterization SHA in the acceptance ledger` |
 
 **A ledger-maintenance commit is defined by purpose, not by the paths it touches.** It corrects
@@ -264,8 +264,8 @@ Codebase-specific rules that must hold in every prompt touching this migration:
   exposure.
 - **Carve-outs from the Test plan section above, valid only inside this migration.** That
   section continues to govern all other work in this repository. Carve-outs 2 and 4 were changed
-  on 2026-09-23 by `acceptance-2026-09.md` section 7, Amendment 1; carve-outs 1 and 3 are as
-  chartered.
+  on 2026-09-23 by `acceptance-2026-09.md` section 7, Amendment 1, and corrected the same day by
+  Amendment 2; carve-outs 1 and 3 are as chartered.
   1. *Iteration 1's characterization commit lands green.* It pins today's behavior and therefore
      cannot be red, so the red-phase gate's "confirm it fails for the expected reason" does not
      apply to it. Formatting, `git diff --check` and the separate-commit rule all still do.
@@ -274,18 +274,23 @@ Codebase-specific rules that must hold in every prompt touching this migration:
      The technique prescribes it: the tests should fail in the specific places the behavior was
      intended to change. The commit message names the behavior change and all three test deltas.
      **Widened from two to three on 2026-09-23** by Amendment 1, which brought
-     `?page=-2147483648` inside the criterion as row 11.
+     `?page=-2147483648` inside the criterion as row 11. All three change from 500 to 400;
+     Amendment 2 corrected row 11's baseline from 200 to 500.
   3. *`VetPaginationContractTests` is frozen while it drives the implementation.* It is the test
      that drives Iteration 4, so the standing rule - the test that drove an implementation is
      never edited to accommodate it - applies to it in full. Carve-out 2 does not weaken that
      rule: the characterization test pins the *old* behavior and drove nothing.
   4. *Iteration 3 may add exactly one method to `VetPaginationCharacterizationTests`* -
-     `integerMinValuePageServesAnEmptyTable` - and nothing else in that file. It lands **green**,
-     for the same reason carve-out 1 exempts Iteration 1: it pins today's behavior and therefore
-     cannot be red. It lands as its own commit, before the iteration's red/green pair, so each
-     commit stays single-purpose and kill-switch condition 3 is not tripped by a commit that was
-     planned as separate. Without it, Amendment 1's row 11 changes an observable status from 200
-     to 400 with no HTTP-level *before* witness. **Added 2026-09-23** by Amendment 1.
+     `integerMinValuePageIsInternalServerErrorAndRendersErrorPage` - and nothing else in that
+     file. It pins today's 500 through the shared error page with the same assertions as the
+     page-0 and page-(-1) methods. It lands **green**, for the same reason carve-out 1 exempts
+     Iteration 1: it pins today's behavior and therefore cannot be red. It lands as its own
+     commit, before the iteration's red/green pair, so each commit stays single-purpose and
+     kill-switch condition 3 is not tripped by a commit that was planned as separate. Without it,
+     row 11's 500 - raised in the persistence layer, not by `PageRequest.of` - has no HTTP-level
+     *before* witness. **Added 2026-09-23** by Amendment 1; **corrected the same day** by
+     Amendment 2, which renamed the method from `integerMinValuePageServesAnEmptyTable` because
+     the 200 it named was never the application's behavior.
 - **Staleness check, every session start, before proposing work:** does section 6's phase list
   match `git log --oneline`? Does section 3 have one row per landed **numbered implementation
   iteration** - not per commit - with every red/green pair named in its single row, and every
@@ -435,20 +440,38 @@ at the MVC layer, not merely in value. Once `InvalidVetPageException` carries `@
 an AC-D1 row at any point.
 
 **Newly recorded, Iteration 2 - an input no AC-D1 row covers.** `GET /vets.html?page=-2147483648`
-answers **200 with an empty table today, not 500**: `page - 1` overflows to `Integer.MAX_VALUE`,
-which is a legal page index. VERIFIED from spring-data-commons 4.1.0 `AbstractPageRequest:46-58`,
-whose only rejection is `pageNumber < 0`, and `:71-73`, whose `getOffset` uses long arithmetic so
-`Integer.MAX_VALUE * 5` does not overflow either; pinned by
-`VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected`, which passes.
-Consequence for Iteration 4: a `page < 1` bound turns this input from 200 into 400. That is a
-behavior change **outside** the criterion as frozen.
+answers **500 through the existing error page today** - the same status and page as `?page=0` -
+but by a different exception. `page - 1` wraps to `Integer.MAX_VALUE`, which `PageRequest`
+accepts as a legal page index (spring-data-commons 4.1.0 `AbstractPageRequest:46-58`, whose only
+rejection is `pageNumber < 0`; `:71-73` computes the offset in long arithmetic). Spring Data JPA
+then rejects that offset, `Integer.MAX_VALUE * 5`, because it exceeds `Integer.MAX_VALUE`
+(spring-data-jpa 4.1.0 `PageableUtils:41-43`, `InvalidDataAccessApiUsageException`), and nothing
+resolves it. VERIFIED 2026-09-23 by a failing `@SpringBootTest` run and a throwaway probe;
+`acceptance-2026-09.md` section 7, Amendment 2 records both. The translation layer alone is
+pinned by `VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected`, which
+passes and stays correct.
+
+*Correction, 2026-09-23.* This paragraph previously read "answers **200 with an empty table
+today, not 500**", marked VERIFIED. That was a verified ledger error, corrected here under
+section 3's rule: the evidence covered spring-data-commons only, and no HTTP request was made.
+Iteration 3's first characterization run exposed it. Consequence for Iteration 4, as corrected:
+a `page < 1` bound turns this input from 500 into 400, exactly like rows 1 and 2.
 
 **Decided 2026-09-23, and no longer open.** The product decision is that every `int` page value
 below 1, `Integer.MIN_VALUE` included, answers 400 after the Toggle. It is recorded as
 `acceptance-2026-09.md` section 7, Amendment 1, which introduces criterion row 11, states the
 rule the three witnesses share, adds row 11's failing witness, and maps the work across
 Iterations 3 and 4. Two carve-out changes follow from it: carve-out 4 is new, and carve-out 2
-widens from two expectations to three. The 200 was never absorbed silently.
+widens from two expectations to three. Amendment 2 corrected row 11's baseline from 200 to 500
+and renamed carve-out 4's method; row 11's 400 outcome is unchanged. Iteration 4 therefore
+changes all three characterized cases from 500 to 400.
+
+**OPEN, INFERRED follow-up - outside this migration.** The same `PageableUtils` check should make
+large *positive* pages answer 500 today, for `page` at or above 429496731, where `(page - 1) * 5`
+exceeds `Integer.MAX_VALUE`. INFERRED from the source and the arithmetic; no request was made. The
+`page < 1` bound does not reach it, row 6's `?page=999` is far below it, and the upper end of
+`page` is a separate product decision. No criterion, test or production code is added for it
+here (Amendment 2).
 
 **Observed but deliberately not asserted.** Under `gradlew bootRun` the 500 page body contains the
 framework string `Page index must not be less than zero`; under `@SpringBootTest` the same page
@@ -462,7 +485,8 @@ status-specific message and says nothing about the exception text.
 view-reuse convenience and was corrected. The 400 body text is outside the contract and no message
 key is added; localized `error.400` support is a separate follow-up. `?page=999` stays 200 as a
 separate product decision. No runtime toggle. Every `int` page below 1, `Integer.MIN_VALUE`
-included, answers 400 after the Toggle - decided 2026-09-23, Amendment 1, criterion row 11. The
+included, answers 400 after the Toggle - decided 2026-09-23, Amendment 1, criterion row 11, whose
+baseline Amendment 2 corrected from 200 to 500. The
 D2 cache finding - Caffeine is runtime-scope only in both builds and no JSR-107 provider artifact
 is declared, so `CacheConfiguration.petclinicCacheConfigurationCustomizer()` is probably inert -
 is INFERRED, out of scope here, and deferred to its own investigation.
