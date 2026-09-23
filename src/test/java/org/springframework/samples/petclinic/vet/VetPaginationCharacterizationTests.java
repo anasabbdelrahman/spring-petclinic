@@ -37,33 +37,37 @@ import org.springframework.util.StringUtils;
 
 /**
  * Characterization tests for the {@code page} request parameter of
- * {@code GET /vets.html}. These pin what the application does <em>today</em>, not what it
- * ought to do. Every expected value below was captured by running the unmodified
- * application and recording its responses, not copied from a prior document.
+ * {@code GET /vets.html}. These pin what the application does, not what it ought to do.
+ * Every expected value below was captured by running the application and recording its
+ * responses, not copied from a prior document.
  * <p>
- * Two of them - {@link #pageZeroIsInternalServerErrorAndRendersErrorPage()} and
- * {@link #negativePageIsInternalServerErrorAndRendersErrorPage()} - record an HTTP 500
- * that rows 1 and 2 of the frozen criterion in {@code acceptance-2026-09.md} intend to
- * replace with a 400 in the Toggle iteration. The characterization and the criterion are
- * meant to disagree until then; these two are the safety net proving nothing else moves
- * when they are updated.
+ * Three of them - {@link #pageZeroIsBadRequestAndRendersErrorPage()},
+ * {@link #negativePageIsBadRequestAndRendersErrorPage()} and
+ * {@link #integerMinValuePageIsBadRequestAndRendersErrorPage()} - record the HTTP 400
+ * that rows 1, 2 and 11 of the criterion in {@code acceptance-2026-09.md} require. Each
+ * recorded a 500 until the Toggle iteration, which changed those three and nothing else
+ * characterized here; the other methods are the safety net proving that.
  * <p>
- * Bug flagged here and deliberately not fixed: {@code showVetList} binds {@code page}
- * with no bound at either end and passes {@code page - 1} straight to
- * {@code PageRequest.of}, so a {@code page} of 0 or below raises
- * {@code IllegalArgumentException}. Nothing resolves it - there is no
- * {@code @ExceptionHandler} or {@code @ControllerAdvice} anywhere in the application - so
- * an ordinary URL answers 500. That is PAID item D1, and repairing it is the subject of
- * later iterations.
+ * Behavior behind those three: {@code showVetList} translates {@code page} through
+ * {@code VetPageRequests.validated}, which rejects every {@code page} below 1 with
+ * {@code InvalidVetPageException}, and that exception carries
+ * {@code @ResponseStatus(HttpStatus.BAD_REQUEST)}. Before the Toggle a {@code page} of 0
+ * or below raised {@code IllegalArgumentException} from {@code PageRequest.of}, except
+ * {@code Integer.MIN_VALUE}, whose {@code page - 1} wrapped to a legal page index and
+ * whose offset the persistence layer then rejected with
+ * {@code InvalidDataAccessApiUsageException}. Nothing resolved either, so each answered
+ * 500 - PAID item D1. There is still no {@code @ExceptionHandler} or
+ * {@code @ControllerAdvice} anywhere in the application.
  * <p>
  * The harness is a full-context server on a random port driven by
  * {@code TestRestTemplate}, chosen so that the container's error dispatch and the shared
  * error page take part in the result. It mirrors the owner package's
  * {@code OwnerNotFoundIntegrationTests}, which is package-private and so cannot be linked
- * from here. Rendered body text is asserted only for the shared layout and the
- * status-specific message; the exception message itself is not asserted, because whether
- * the container populates it depends on {@code server.error.include-message}, which
- * nothing in this repository configures.
+ * from here. Rendered body text is asserted only for the shared layout. The
+ * status-specific message is not asserted, because the body text of a 400 is outside the
+ * acceptance contract; nor is the exception message, because whether the container
+ * populates it depends on {@code server.error.include-message}, which nothing in this
+ * repository configures.
  * <p>
  * Row identity per page is deliberately not asserted: the paginated query declares no
  * sort order (PAID item D3), so which vet lands on which page is undefined. Only counts
@@ -94,38 +98,35 @@ class VetPaginationCharacterizationTests {
 	}
 
 	@Test
-	void pageZeroIsInternalServerErrorAndRendersErrorPage() {
+	void pageZeroIsBadRequestAndRendersErrorPage() {
 		ResponseEntity<String> response = getHtml("/vets.html?page=0");
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody()).contains(LAYOUT_TITLE);
 		assertThat(response.getBody()).contains("Something happened...");
-		assertThat(response.getBody()).contains("An internal server error occurred.");
 		assertThat(response.getBody()).doesNotContain("Whitelabel Error Page");
 	}
 
 	@Test
-	void negativePageIsInternalServerErrorAndRendersErrorPage() {
+	void negativePageIsBadRequestAndRendersErrorPage() {
 		ResponseEntity<String> response = getHtml("/vets.html?page=-1");
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody()).contains(LAYOUT_TITLE);
 		assertThat(response.getBody()).contains("Something happened...");
-		assertThat(response.getBody()).contains("An internal server error occurred.");
 		assertThat(response.getBody()).doesNotContain("Whitelabel Error Page");
 	}
 
 	@Test
-	void integerMinValuePageIsInternalServerErrorAndRendersErrorPage() {
+	void integerMinValuePageIsBadRequestAndRendersErrorPage() {
 		ResponseEntity<String> response = getHtml("/vets.html?page=-2147483648");
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody()).contains(LAYOUT_TITLE);
 		assertThat(response.getBody()).contains("Something happened...");
-		assertThat(response.getBody()).contains("An internal server error occurred.");
 		assertThat(response.getBody()).doesNotContain("Whitelabel Error Page");
 	}
 

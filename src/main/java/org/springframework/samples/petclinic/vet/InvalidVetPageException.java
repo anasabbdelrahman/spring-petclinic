@@ -15,6 +15,9 @@
  */
 package org.springframework.samples.petclinic.vet;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 /**
  * Thrown when the one-based {@code page} of {@code GET /vets.html} is below 1.
  * <p>
@@ -23,6 +26,7 @@ package org.springframework.samples.petclinic.vet;
  * requested value.
  * </p>
  */
+@ResponseStatus(HttpStatus.BAD_REQUEST)
 class InvalidVetPageException extends RuntimeException {
 
 	InvalidVetPageException() {

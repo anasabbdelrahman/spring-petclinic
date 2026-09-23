@@ -22,11 +22,12 @@ import org.springframework.data.domain.Pageable;
  * Translates the one-based {@code page} request parameter of {@code GET /vets.html} into
  * the zero-based {@link Pageable} the repository expects.
  * <p>
- * Two translations sit behind this seam. {@link #unvalidated(int)}, extracted from
- * {@code VetController.findPaginated} unchanged, applies no bound of its own and is the
- * one the controller calls. {@link #validated(int)} rejects every page below 1 with
- * {@link InvalidVetPageException} and is not yet called. For a page they both accept,
- * both apply the same page size and the same one-based to zero-based translation.
+ * Two translations sit behind this seam. {@link #validated(int)} rejects every page below
+ * 1 with {@link InvalidVetPageException} and is the one the controller calls.
+ * {@link #unvalidated(int)}, extracted from {@code VetController.findPaginated}
+ * unchanged, applies no bound of its own and remains as the legacy implementation, with
+ * no caller. For a page they both accept, both apply the same page size and the same
+ * one-based to zero-based translation.
  * </p>
  */
 final class VetPageRequests {

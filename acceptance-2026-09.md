@@ -240,12 +240,61 @@ Each with the pin that detects a change:
 
 ## 6. Result
 
-_Pending. Filled at the closing commit of Iteration 4's session, from measured output only._
+Filled 2026-09-23 at Iteration 4's green commit, `Select validating vet page translation
+(plan-step 4/4)`, from measured output only. Every run below is the first run on the green tree;
+the one deliberate re-run is `./gradlew test --rerun`, run immediately after `./gradlew build` to
+obtain a fresh whole-suite count. Default H2 profile throughout.
 
-Per-row measured status will be recorded here, each marked met or not met, with the gap and exactly
-what would close it where a row does not pass. The Phase 4 (Remove) state will be recorded as open,
-with the gap and trigger from section 1.1 repeated in identical wording. Numbers will be those
-observed on the first attempt, with any re-run stated as a re-run.
+| # | Request | Measured by | Measured result | Status |
+|---|---|---|---|---|
+| 1 | `GET /vets.html?page=0` | `VetPaginationContractTests.pageZeroIsBadRequest` | 400; shared layout and `Something happened...` present; no Whitelabel page | **met** |
+| 2 | `GET /vets.html?page=-1` | `VetPaginationContractTests.negativePageIsBadRequest` | as row 1 | **met** |
+| 3 | `GET /vets.html` | `VetPaginationContractTests.absentPageServesFirstPage` | 200; 5 vet rows; pager shows page 1 current and 2 pages | **met** |
+| 4 | `GET /vets.html?page=1` | `VetPaginationContractTests.firstPageServesFiveRows` | identical to row 3 | **met** |
+| 5 | `GET /vets.html?page=2` | `VetPaginationContractTests.lastPageServesRemainingRow` | 200; 1 vet row; pager shows page 2 current and 2 pages | **met** |
+| 6 | `GET /vets.html?page=999` | `VetPaginationContractTests.pageBeyondLastServesEmptyTable` | 200; zero vet rows; pager shows 2 pages | **met** |
+| 7 | `GET /vets.html?page=abc` | `VetPaginationContractTests.nonNumericPageIsBadRequest` | 400 | **met** |
+| 8 | `GET /owners?page=0` | `OwnerNotFoundIntegrationTests.paginationErrorIsNotTreatedAsNotFound`, file unmodified | 500, not 404 | **met** |
+| 9 | `GET /vets` JSON | `VetControllerTests.showResourcesVetList`, file unmodified | 200; `$.vetList[0].id` = 1 | **met** |
+| 10 | `src/main/resources/messages/**` | `git diff --quiet dd69abb -- src/main/resources/messages/` (the setup commit) and `git log dd69abb..HEAD` over that path | exit 0; zero commits; `I18nPropertiesSyncTest` 2 green | **met** |
+| 11 | `GET /vets.html?page=-2147483648` (Amendment 1) | `VetPaginationContractTests.integerMinValuePageIsBadRequest` | as row 1 | **met** |
+
+Rows 3-6 observe `currentPage` and `totalPages` through the rendered pager rather than the model:
+a page number renders as a link unless it is the current page, and no link to page 3 exists. The
+view name `vets/vetList` is not asserted over HTTP; the rendered vet table and pager stand for it.
+
+**Whole-suite gate.** `./gradlew build` green. `./gradlew test --rerun`: 122 tests in 26 classes,
+0 failures, 0 errors, 0 skipped. `./mvnw spring-javaformat:apply` run twice, no change either
+pass; `VetPaginationContractTests` unchanged since its red commit, `Add HTTP contract tests for the
+vet page lower bound`, by `git diff --exit-code`. `git diff --check` clean.
+
+**Red evidence.** At that red commit the focused run was 8 tests, 3 failing - rows 1, 2 and 11,
+each "expected: 400 BAD_REQUEST but was: 500 INTERNAL_SERVER_ERROR" - and rows 3-7 passing,
+because they pin behavior the Toggle must not change.
+
+**Failing witnesses (section 4 and Amendment 1), run in a throwaway copy of the green tree and
+then deleted.** Selecting `unvalidated` again: rows 1, 2 and 11 fail with 500. Removing
+`@ResponseStatus`: rows 1, 2 and 11 fail with 500. Replacing `page < 1` with `page - 1 < 0`: row
+11 alone fails, with 500. Adding an upper-bound rejection (`page > 2`): row 6 fails with 400.
+Section 4's witnesses for rows 3-5, 7, 8, 9 and 10 were not re-run in this session.
+
+**AC-D1: met.** This is claim 1 of section 1.1 and the only completion claim this file makes.
+
+**Phase 4 (Remove): OPEN.** The Branch-by-Abstraction migration is NOT complete, because Phase 4
+(Remove) remains open.
+
+**The exact gap:** `VetPageRequests` retains both translations; the unvalidated one has zero
+callers but is not deleted; the seam introduced for the migration is not collapsed.
+
+**The exact trigger:** the application runs somewhere with an access log showing the validating
+translation clean over an agreed window, at which point Phase 4 lands as its own commit. A
+decision to delete on test evidence alone would contradict the phase invariant and must be
+recorded as such if taken.
+
+Not addressed, and outside this criterion: the INFERRED large-positive-page 500 (Amendment 2),
+the 400 body falling to `error.general` (section 2.5), and the line references in section 1 and
+Amendment 2 that the Toggle's Javadoc edit shifted by one - `VetPageRequests.java:52` is now
+`:53` for `unvalidated` - recorded here because earlier sections are not edited in place.
 
 ## 7. Amendments
 

@@ -55,7 +55,7 @@ class VetController {
 	}
 
 	private Page<Vet> findPaginated(int page) {
-		return vetRepository.findAll(VetPageRequests.unvalidated(page));
+		return vetRepository.findAll(VetPageRequests.validated(page));
 	}
 
 	@GetMapping({ "/vets" })

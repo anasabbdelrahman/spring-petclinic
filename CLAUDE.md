@@ -151,16 +151,18 @@ staleness check at the end of section 4 before proposing work.
 
 ### 2. Pathology inventory
 
-- **Unvalidated framework-boundary parameter:** `@RequestParam(defaultValue = "1") int page`
-  (`VetController.java:43`) reaches `PageRequest.of` with no bound at either end. Since
-  Iteration 2 the translation sits behind the seam rather than inline in the controller:
-  `VetController.findPaginated` (`VetController.java:57-59`) delegates to
-  `VetPageRequests.unvalidated` (`VetPageRequests.java:51-53`), which calls
-  `PageRequest.of(page - 1, PAGE_SIZE)` (`VetPageRequests.java:52`) with `PAGE_SIZE = 5`
-  (`VetPageRequests.java:38`). The missing bound is unchanged; only its location moved. Since
-  Iteration 3 a bounded translation exists beside it - `VetPageRequests.validated`
-  (`VetPageRequests.java:61-66`) - but nothing calls it, so the pathology stays live until
-  Iteration 4 selects it.
+- **Unvalidated framework-boundary parameter - lower end resolved by Iteration 4.**
+  `@RequestParam(defaultValue = "1") int page` (`VetController.java:43`) is still bound with no
+  bound of its own, but since the Toggle `VetController.findPaginated`
+  (`VetController.java:57-59`) delegates to `VetPageRequests.validated`
+  (`VetPageRequests.java:62-67`), which rejects every `page < 1` with `InvalidVetPageException`
+  - bound to 400 by `@ResponseStatus(HttpStatus.BAD_REQUEST)`
+  (`InvalidVetPageException.java:29`) - and otherwise calls
+  `PageRequest.of(page - 1, PAGE_SIZE)` (`VetPageRequests.java:66`) with `PAGE_SIZE = 5`
+  (`VetPageRequests.java:39`). The legacy `VetPageRequests.unvalidated`
+  (`VetPageRequests.java:52-54`, `PageRequest.of` at `:53`) is unchanged and has zero callers;
+  it stays until Phase 4. The upper end remains unbounded - a separate product decision, and
+  the INFERRED large-positive-page 500 in section 6 is outside this migration.
 - **Pagination unobserved by the existing tests:** the existing `VetControllerTests` do not
   observe pagination because they stub `findAll(any(Pageable.class))`
   (`VetControllerTests.java:77-78`) and do not capture or assert the `Pageable`. A new
@@ -186,7 +188,7 @@ staleness check at the end of section 4 before proposing work.
 | 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | Characterize /vets.html page contract (plan-step 1/4) — green only, carve-out 1 |
 | 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | red: Add tests for the vet page request translation; green: Extract vet page request translation behind a seam (plan-step 2/4) |
 | 2026-09-23 | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | characterization (green only, carve-out 4): Characterize Integer.MIN_VALUE page on /vets.html (plan-step 3/4, carve-out 4); red: Add tests for the validating vet page translation; green: Add validating vet page translation, unselected (plan-step 3/4); review: Record Iteration 3 fresh-session review |
-| _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection, and `@ResponseStatus(HttpStatus.BAD_REQUEST)` on `InvalidVetPageException` (deferred from Iteration 3, decided 2026-09-23) | _pending_ |
+| 2026-09-23 | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection, and `@ResponseStatus(HttpStatus.BAD_REQUEST)` on `InvalidVetPageException` (deferred from Iteration 3, decided 2026-09-23) | red: Add HTTP contract tests for the vet page lower bound; green: Select validating vet page translation (plan-step 4/4) |
 
 **One row per numbered implementation iteration** - the four of this migration's plan - and never
 one row per commit. An iteration that lands as a red/green pair occupies a single row that names
@@ -538,8 +540,31 @@ review`, named in Iteration 3's section 3 row under `review:` and in the Phase 2
       Review-record commit: `Record Iteration 3 fresh-session review`, 2026-09-23 - the post-green
       fresh-session review, verdict **appropriately scoped** (section 5.2). CLAUDE.md only; it
       widens carve-out 2 and changes no criterion, test or implementation.
-- [ ] **Phase 3 - Toggle.** Validating translation selected; **functional criterion AC-D1 met**.
-      Commit: _pending_
+- [x] **Phase 3 - Toggle.** Validating translation selected; **functional criterion AC-D1 met**.
+      Commits, both 2026-09-23: `Add HTTP contract tests for the vet page lower bound` (red -
+      `VetPaginationContractTests`, 8 tests, 3 failing with "expected: 400 BAD_REQUEST but was:
+      500 INTERNAL_SERVER_ERROR" - `pageZeroIsBadRequest`, `negativePageIsBadRequest`,
+      `integerMinValuePageIsBadRequest` - and the 5 unchanged-behavior rows passing, as expected)
+      and `Select validating vet page translation (plan-step 4/4)` (green, first attempt, no
+      corrective commit). `VetController.findPaginated` now calls `validated`;
+      `InvalidVetPageException` gains `@ResponseStatus(HttpStatus.BAD_REQUEST)`; the
+      `VetPageRequests` class Javadoc now names `validated` as selected and `unvalidated` as the
+      legacy implementation, and neither method changed. `VetPaginationCharacterizationTests`
+      changed under carve-out 2 only: the three lower-bound methods renamed to `IsBadRequest`,
+      500 -> 400, `"An internal server error occurred."` removed, and the class Javadoc corrected
+      - including its harness paragraph, which named a status-specific message no method asserts
+      any longer. `VetPaginationContractTests` proved unchanged since the red commit and
+      `VetPageRequestsTests` since `Add tests for the validating vet page translation`, both by
+      `git diff --exit-code`. Focused: contract 8, translation 14, characterization 9,
+      `VetControllerTests` 2, `OwnerNotFoundIntegrationTests` 6, `I18nPropertiesSyncTest` 2, all
+      green. Formatter applied twice, no change either pass. `./gradlew build` green;
+      `./gradlew test --rerun` 122 tests, 0 failures, 0 errors, 0 skipped. Failing witnesses,
+      each run in a throwaway `git archive` copy of the green tree and then deleted: selecting
+      `unvalidated` again, or removing `@ResponseStatus`, fails the three contract and three
+      characterization lower-bound methods with 500; `page - 1 < 0` fails only the
+      `Integer.MIN_VALUE` method in each of the three classes; an added `page > 2` rejection fails
+      both page-999 methods with 400 and `validatedAcceptsPageFarBeyondTheLast`. The measured
+      per-row result is `acceptance-2026-09.md` section 6.
 - [ ] **Phase 4 - Remove. OPEN, and expected to stay open. The macro-pattern migration is
       therefore NOT complete, even once AC-D1 is met.** The gap: `VetPageRequests` retains both
       translations, the unvalidated one has zero callers but is not deleted, and the migration
@@ -568,6 +593,16 @@ at the MVC layer, not merely in value. Once `InvalidVetPageException` carries `@
 `MethodArgumentTypeMismatchException` for `?page=abc`. That type is not created until **Iteration
 3** and not selected until **Iteration 4**, so the assertion belongs to **Iteration 4**. It is not
 an AC-D1 row at any point.
+
+**Decided 2026-09-23, Iteration 4: the MVC-layer assertion is not written.** No approved mapping
+requires it - `acceptance-2026-09.md` section 3.1 leaves it OPEN and Amendment 1 maps it "if
+written" - and it is not an AC-D1 row. Exception identity for `?page=0` stays pinned at unit level
+by the three `validatedRejects*` tests, and row 8 stays the load-bearing witness against
+over-broad exception mapping. Consequence, recorded rather than hidden: that
+`ResponseStatusExceptionResolver` is what resolves `InvalidVetPageException` is **INFERRED**; the
+repository proves the 400 and proves, by the removed-`@ResponseStatus` witness, that the
+annotation is what produces it, but asserts no resolved-exception type. Revisit only if the two
+400 mechanisms ever need telling apart.
 
 **Newly recorded, Iteration 2 - an input no AC-D1 row covers.** `GET /vets.html?page=-2147483648`
 answers **500 through the existing error page today** - the same status and page as `?page=0` -
