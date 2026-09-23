@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.vet;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,6 +82,31 @@ class VetPageRequestsTests {
 	@Test
 	void noSortOrderIsApplied() {
 		assertTrue(VetPageRequests.unvalidated(1).getSort().isUnsorted());
+	}
+
+	@Test
+	void validatedRejectsIntegerMinValue() {
+		assertThrows(InvalidVetPageException.class, () -> VetPageRequests.validated(Integer.MIN_VALUE));
+	}
+
+	@Test
+	void validatedRejectsPageZero() {
+		assertThrows(InvalidVetPageException.class, () -> VetPageRequests.validated(0));
+	}
+
+	@Test
+	void validatedRejectsNegativePage() {
+		assertThrows(InvalidVetPageException.class, () -> VetPageRequests.validated(-1));
+	}
+
+	@Test
+	void validatedAcceptsPageOne() {
+		assertEquals(PageRequest.of(0, 5), VetPageRequests.validated(1));
+	}
+
+	@Test
+	void validatedAcceptsPageFarBeyondTheLast() {
+		assertEquals(PageRequest.of(998, 5), VetPageRequests.validated(999));
 	}
 
 }
