@@ -98,6 +98,25 @@ Source is organized **by domain feature**, not by technical layer. Each package 
 
 UI strings live in `src/main/resources/messages/messages*.properties` (11 locales). Add new keys to the base `messages.properties` and keep locale files in sync (enforced by `I18nPropertiesSyncTest`).
 
+## Security Requirements
+
+These rules are normative for new and changed code; existing violations are tracked as security findings, not exempted.
+
+- Validate every request parameter, path variable and form field at the application boundary; define bounds, lengths and accepted formats.
+- Allowlist data-bound fields; reject unexpected and nested properties instead of relying only on denylisted identifiers.
+- Use Bean Validation for domain constraints and add controller-level checks for values Bean Validation cannot express.
+- Use Spring Data repositories or parameterized queries only; never concatenate untrusted input into SQL, JPQL, LDAP queries or commands.
+- Require explicit authentication and authorization decisions for endpoints handling personal or mutable data; enforce object-level access where ownership matters.
+- Keep CSRF protection enabled for cookie-authenticated state-changing requests and include valid CSRF tokens in forms.
+- Never hardcode credentials or tokens; load them from environment variables or deployment-managed secret stores.
+- Run detect-secrets before every commit; never baseline a real credential without an explicit documented risk decision.
+- Use escaped template output such as `th:text` and `th:field`; never use unescaped output for untrusted data unless it is sanitized by an approved library.
+- Return correct HTTP statuses with safe client messages; never expose stack traces, internal exception messages, queries or secrets.
+- Never log credentials, tokens or unnecessary PII; treat request values as attacker-controlled.
+- Add dependencies only from verified official coordinates; check both Maven and Gradle dependency graphs for known vulnerabilities.
+- Keep production management endpoints restricted; never expose every actuator endpoint without authentication and network controls.
+- Add focused security regression tests when fixing a confirmed vulnerability.
+
 ## Brownfield migration ledger - vet pagination contract (PAID D1)
 
 Additive to everything above: the build commands, code style, architecture, data/profile and
