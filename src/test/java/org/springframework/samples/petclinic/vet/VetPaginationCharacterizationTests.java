@@ -118,6 +118,18 @@ class VetPaginationCharacterizationTests {
 	}
 
 	@Test
+	void integerMinValuePageIsInternalServerErrorAndRendersErrorPage() {
+		ResponseEntity<String> response = getHtml("/vets.html?page=-2147483648");
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody()).contains(LAYOUT_TITLE);
+		assertThat(response.getBody()).contains("Something happened...");
+		assertThat(response.getBody()).contains("An internal server error occurred.");
+		assertThat(response.getBody()).doesNotContain("Whitelabel Error Page");
+	}
+
+	@Test
 	void absentPageServesAFullFirstPage() {
 		ResponseEntity<String> response = getHtml("/vets.html");
 
