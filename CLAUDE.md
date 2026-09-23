@@ -188,7 +188,7 @@ staleness check at the end of section 4 before proposing work.
 | 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | Characterize /vets.html page contract (plan-step 1/4) — green only, carve-out 1 |
 | 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | red: Add tests for the vet page request translation; green: Extract vet page request translation behind a seam (plan-step 2/4) |
 | 2026-09-23 | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | characterization (green only, carve-out 4): Characterize Integer.MIN_VALUE page on /vets.html (plan-step 3/4, carve-out 4); red: Add tests for the validating vet page translation; green: Add validating vet page translation, unselected (plan-step 3/4); review: Record Iteration 3 fresh-session review |
-| 2026-09-23 | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection, and `@ResponseStatus(HttpStatus.BAD_REQUEST)` on `InvalidVetPageException` (deferred from Iteration 3, decided 2026-09-23) | red: Add HTTP contract tests for the vet page lower bound; green: Select validating vet page translation (plan-step 4/4) |
+| 2026-09-23 | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection, and `@ResponseStatus(HttpStatus.BAD_REQUEST)` on `InvalidVetPageException` (deferred from Iteration 3, decided 2026-09-23) | red: Add HTTP contract tests for the vet page lower bound; green: Select validating vet page translation (plan-step 4/4); review: Record Iteration 4 fresh-session review |
 
 **One row per numbered implementation iteration** - the four of this migration's plan - and never
 one row per commit. An iteration that lands as a red/green pair occupies a single row that names
@@ -501,6 +501,50 @@ review`, named in Iteration 3's section 3 row under `review:` and in the Phase 2
 6. It is not ledger maintenance: it widens carve-out 2, which is a migration decision, and section
 3 excludes those from ledger maintenance.
 
+#### 5.3 Iteration 4 fresh-session review - verdict and evidence
+
+Run 2026-09-23, after `Select validating vet page translation (plan-step 4/4)`. Verdict:
+**appropriately scoped.** Functional criterion AC-D1 is met; Branch-by-Abstraction Phase 4
+(Remove) is still OPEN, with the gap and trigger recorded in section 6 unchanged.
+
+**The single actionable finding: the green commit's body did not satisfy carve-out 2.** Carve-out
+2 requires the commit message to name the behavior change, all three method deltas (rename,
+status, removed assertion) and the Javadoc correction. The green commit, as first landed, had a
+subject line and no body.
+
+**Resolution.** The green commit was amended in place, before the branch was pushed. The tree is
+unchanged - `HEAD^{tree}` equals the pre-amend tree - and the parent is still `Add HTTP contract
+tests for the vet page lower bound`. The subject is retained exactly, and the body now names the
+behavior change, the three method deltas and the Javadoc correction. The amended green SHA is
+`919e07a`, verified an ancestor of `HEAD` by `git merge-base --is-ancestor`. Repository
+documents continue to reference the commit by subject, per section 3, so no citation changes.
+The amend changed a message, not a tree, so it is not a corrective commit for kill-switch
+condition 3.
+
+Evidence, all re-run in the review session: `VetPaginationContractTests` byte-identical to the
+red commit and `VetPageRequestsTests` to `Add tests for the validating vet page translation`, both
+by `git diff --exit-code`; the characterization changes within carve-out 2 exactly; no change
+since the setup commit under `src/main/resources/`, `owner/`, `system/`, `VetRepository`,
+`VetControllerTests` or the build files; no `@ControllerAdvice` or `@ExceptionHandler`. Focused
+run 41 tests, 0 failures; `spring-javaformat:validate` and `checkFormat` clean; `./gradlew test
+--rerun` 122 tests in 26 classes, 0 failures, 0 errors, 0 skipped; `git diff --check` clean. The
+red run and all four failing witnesses in section 6's Phase 3 entry were reproduced in throwaway
+`git archive` copies, each with the recorded failing set and status.
+
+Observations, recorded with no action required:
+
+- **The tests sample three values below 1.** `0`, `-1` and `Integer.MIN_VALUE` are the only
+  rejected inputs asserted, so a contrived implementation that special-cases exactly those three
+  would pass. This is the same kind of accepted survivor as section 5.2's page-2 mapping. It is
+  not worth changing frozen tests to close.
+- **Rows 3-6 are coupled to the repository's pager markup.** They observe `currentPage` and
+  `totalPages` through literal `href="/vets.html?page=N"` links in `vetList.html`, so a markup
+  change could fail them without a behavior change. Acceptable for an in-repository view.
+
+No further action is required. This review lands as Iteration 4's review-record commit, `Record
+Iteration 4 fresh-session review`, named in Iteration 4's section 3 row under `review:` and in the
+Phase 3 entry of section 6. It records a verdict and a resolved finding and decides nothing.
+
 ### 6. Macro-pattern migration state - Branch-by-Abstraction
 
 - [x] **Phase 0 - Characterize.** `/vets.html` page domain pinned, including today's 500s.
@@ -565,6 +609,9 @@ review`, named in Iteration 3's section 3 row under `review:` and in the Phase 2
       `Integer.MIN_VALUE` method in each of the three classes; an added `page > 2` rejection fails
       both page-999 methods with 400 and `validatedAcceptsPageFarBeyondTheLast`. The measured
       per-row result is `acceptance-2026-09.md` section 6.
+      Review-record commit: `Record Iteration 4 fresh-session review`, 2026-09-23 - the post-green
+      fresh-session review, verdict **appropriately scoped** (section 5.3). CLAUDE.md only; it
+      changes no criterion, test or implementation.
 - [ ] **Phase 4 - Remove. OPEN, and expected to stay open. The macro-pattern migration is
       therefore NOT complete, even once AC-D1 is met.** The gap: `VetPageRequests` retains both
       translations, the unvalidated one has zero callers but is not deleted, and the migration
