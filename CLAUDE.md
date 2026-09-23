@@ -185,13 +185,24 @@ staleness check at the end of section 4 before proposing work.
 |---|---|---|---|---|---|---|
 | 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | Characterize /vets.html page contract (plan-step 1/4) — green only, carve-out 1 |
 | 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | red: Add tests for the vet page request translation; green: Extract vet page request translation behind a seam (plan-step 2/4) |
-| 2026-09-23 | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | characterization (green only, carve-out 4): Characterize Integer.MIN_VALUE page on /vets.html (plan-step 3/4, carve-out 4); red: Add tests for the validating vet page translation; green: Add validating vet page translation, unselected (plan-step 3/4) |
+| 2026-09-23 | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | characterization (green only, carve-out 4): Characterize Integer.MIN_VALUE page on /vets.html (plan-step 3/4, carve-out 4); red: Add tests for the validating vet page translation; green: Add validating vet page translation, unselected (plan-step 3/4); review: Record Iteration 3 fresh-session review |
 | _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection, and `@ResponseStatus(HttpStatus.BAD_REQUEST)` on `InvalidVetPageException` (deferred from Iteration 3, decided 2026-09-23) | _pending_ |
 
 **One row per numbered implementation iteration** - the four of this migration's plan - and never
 one row per commit. An iteration that lands as a red/green pair occupies a single row that names
 both commits, labelled `red:` and `green:`, in that order. An iteration exempted by a carve-out
-lands green only and says so.
+lands green only and says so. An iteration that a carve-out opens with a planned green
+characterization commit, followed by its red/green pair, occupies a single row that names all
+three commits, labelled `characterization (green only, carve-out N):`, `red:` and `green:`, in
+that order - Iteration 3 is the instance, under carve-out 4. The characterization commit is part
+of the iteration, not a separate kind of commit, so it gets no row of its own and does not count
+as a corrective commit for kill-switch condition 3. A numbered iteration's row may also name the
+commit that records its post-green fresh-session review, labelled `review:` and placed last. That
+commit belongs to the iteration it reviews - it is not ledger maintenance, not a new iteration and
+not an acceptance amendment - and it does not count as a corrective commit for kill-switch
+condition 3. It may record the review's verdict and evidence and resolve the review's findings in
+this ledger, including a carve-out change the review decides; it changes no criterion, test or
+implementation. Iteration 3 is the instance.
 
 **Three kinds of commit carry no iteration row.** Each is tracked in the section that owns it, so
 its absence from this table is correct rather than a discrepancy:
@@ -268,17 +279,48 @@ Codebase-specific rules that must hold in every prompt touching this migration:
 - **Carve-outs from the Test plan section above, valid only inside this migration.** That
   section continues to govern all other work in this repository. Carve-outs 2 and 4 were changed
   on 2026-09-23 by `acceptance-2026-09.md` section 7, Amendment 1, and corrected the same day by
-  Amendment 2; carve-outs 1 and 3 are as chartered.
+  Amendment 2; carve-out 2 was widened again the same day by the Iteration 3 fresh-session review
+  (section 5.2); carve-outs 1 and 3 are as chartered.
   1. *Iteration 1's characterization commit lands green.* It pins today's behavior and therefore
      cannot be red, so the red-phase gate's "confirm it fails for the expected reason" does not
      apply to it. Formatting, `git diff --check` and the separate-commit rule all still do.
-  2. *Iteration 4 may update exactly three expectations* - those for `?page=0`, `?page=-1` and
-     `?page=-2147483648` - in `VetPaginationCharacterizationTests`, and nothing else in that file.
+  2. *Iteration 4 may update exactly three characterization methods and the class-level Javadoc*
+     in `VetPaginationCharacterizationTests`, and nothing else in that file. The three methods are
+     `pageZeroIsInternalServerErrorAndRendersErrorPage`,
+     `negativePageIsInternalServerErrorAndRendersErrorPage` and
+     `integerMinValuePageIsInternalServerErrorAndRendersErrorPage` - the `?page=0`, `?page=-1` and
+     `?page=-2147483648` cases. In those three methods, and only those, Iteration 4 may:
+     - rename the method, replacing `IsInternalServerError` with `IsBadRequest` and keeping the
+       rest of the name - for example `pageZeroIsBadRequestAndRendersErrorPage`;
+     - change the expected status from `HttpStatus.INTERNAL_SERVER_ERROR` (500) to
+       `HttpStatus.BAD_REQUEST` (400);
+     - remove the 500-specific assertion that the body contains
+       `"An internal server error occurred."`, adding nothing in its place.
+
+     The shared-layout assertions in those methods stay exactly as they are: the body is not null,
+     it contains the layout title and `"Something happened..."`, and it does not contain
+     `"Whitelabel Error Page"`. **No specific 400 body text is added or asserted** - not
+     `"An unexpected error occurred."` nor any other string - because the 400 body text is outside
+     the acceptance contract (`acceptance-2026-09.md` section 2.6).
+
+     The class-level Javadoc may be corrected, and only so that it accurately describes the
+     post-Toggle behavior, including the renamed methods it links. No other method, assertion or
+     test documentation may change - not the other six methods, not the `vetRowCount` Javadoc, not
+     any inline comment, not the helpers or constants.
      The technique prescribes it: the tests should fail in the specific places the behavior was
-     intended to change. The commit message names the behavior change and all three test deltas.
+     intended to change. The commit message names the behavior change, all three method deltas
+     (rename, status, removed assertion) and the Javadoc correction.
      **Widened from two to three on 2026-09-23** by Amendment 1, which brought
      `?page=-2147483648` inside the criterion as row 11. All three change from 500 to 400;
-     Amendment 2 corrected row 11's baseline from 200 to 500.
+     Amendment 2 corrected row 11's baseline from 200 to 500. **Widened to the class-level
+     Javadoc on 2026-09-23** by the Iteration 3 fresh-session review (section 5.2): that Javadoc
+     already under-describes the file - it says two methods record a 500, and that every page of 0
+     or below raises `IllegalArgumentException` - and would describe 500s that no longer occur
+     once the Toggle lands. The same review made the per-method changes explicit, because "three
+     expectations" did not say whether renames or the removal of the 500-specific assertion were
+     allowed, and Iteration 4 cannot go green without the latter. This widening changes
+     characterization tests and their documentation only, not the criterion, so it needs no
+     acceptance amendment.
   3. *`VetPaginationContractTests` is frozen while it drives the implementation.* It is the test
      that drives Iteration 4, so the standing rule - the test that drove an implementation is
      never edited to accommodate it - applies to it in full. Carve-out 2 does not weaken that
@@ -296,9 +338,10 @@ Codebase-specific rules that must hold in every prompt touching this migration:
      the 200 it named was never the application's behavior.
 - **Staleness check, every session start, before proposing work:** does section 6's phase list
   match `git log --oneline`? Does section 3 have one row per landed **numbered implementation
-  iteration** - not per commit - with every red/green pair named in its single row, and every
-  setup, acceptance-amendment and ledger-maintenance commit correctly absent and tracked in the
-  section that owns it? Do section 2's file and line references still resolve to the code as it
+  iteration** - not per commit - with every red/green pair named in its single row, every landed
+  review-record commit named as `review:` in the row of the numbered iteration it reviews, and
+  every setup, acceptance-amendment and ledger-maintenance commit correctly absent and tracked in
+  the section that owns it? Do section 2's file and line references still resolve to the code as it
   reads today? A discrepancy is a ledger bug - fix the ledger before doing any new work.
 
 ### 5. Claude failure modes specific to this codebase
@@ -394,6 +437,68 @@ them as defects.
   directs, so the class javadoc's "pin the extracted translation ... and nothing more" no longer
   describes the whole file. It is left unedited under the no-edit rule for committed tests.
 
+#### 5.2 Iteration 3 fresh-session review - verdict and evidence
+
+Run 2026-09-23, after `Add validating vet page translation, unselected (plan-step 3/4)`. Verdict:
+**appropriately scoped.** The five `validatedRejects*` / `validatedAccepts*` tests express the
+`page < 1` rule rather than the implementation. The reject tests assert only
+`InvalidVetPageException` by type, with no message text and no claim about the mechanism. Each
+accept test compares against a whole `PageRequest.of(n, 5)`, which pins the page index, the page
+size and the absence of a sort in one assertion.
+
+**Mutation evidence.** Twelve variants of `validated()` were run against `VetPageRequestsTests`
+in a throwaway `git archive HEAD` copy outside the repository, then discarded:
+
+- `page - 1 < 0` - fails `validatedRejectsIntegerMinValue` only (the recorded witness).
+- no bound - fails all three `validatedRejects*` (the recorded witness).
+- throws `IllegalArgumentException` instead - fails all three `validatedRejects*`.
+- adds a `Sort`, page size 10, or drops the `- 1` - each fails both `validatedAccepts*`.
+- `page < 2` - fails `validatedAcceptsPageOne`.
+- equivalent rewrites pass: `page <= 0`; returning `unvalidated(page)` after the guard;
+  `Pageable.ofSize(PAGE_SIZE).withPage(page - 1)`.
+- survivors, accepted: an added upper bound `page > 1000` (the upper end is a separate product
+  decision, section 6); mapping page 2 to index 0 (contrived). The second is the only thing a
+  page-2 test would add, so omitting it is correct in intent, though it departs from the letter
+  of the Test plan's "one step either side" - and Amendment 1's mapping named exactly these five
+  methods.
+
+Other evidence, all re-run in the review session: the red commit's `:compileTestJava` failure
+reproduced as exactly 8 `cannot find symbol` errors, all `InvalidVetPageException` or
+`validated(int)`; `unvalidated` and the original nine tests unchanged since Iteration 2;
+`VetController` byte-identical to Iteration 2's green commit and still calling `unvalidated`;
+no `@ControllerAdvice`, `@ExceptionHandler` or new `@ResponseStatus`;
+`integerMinValuePageIsInternalServerErrorAndRendersErrorPage` green; `git diff --check` clean on
+all three commits; `./gradlew build` green and `./gradlew test --rerun` 114 tests, 0 failures,
+0 errors, 0 skipped. No file under `src/main/resources/messages/` changed since the setup commit.
+
+Recorded, and resolved as stated:
+
+- **The `Integer.MIN_VALUE` unit-test comment is stale at the HTTP level and stays unchanged.**
+  `VetPageRequestsTests.java:77-78` says the input "answers an empty page today rather than
+  raising". Amendment 2 disproved that over HTTP: the request answers 500, raised in the
+  persistence layer. The assertion is still correct - it pins only the translation layer, where
+  `page - 1` does wrap to `Integer.MAX_VALUE` - so the test is right and only its comment is wrong.
+  It is a committed test that drove an implementation, so the no-edit rule forbids correcting the
+  comment. Read that comment as describing the translation layer, not the HTTP response.
+- **The characterization class Javadoc under-describes the file.**
+  `VetPaginationCharacterizationTests.java:44-57` still says two methods record a 500 and that
+  every page of 0 or below raises `IllegalArgumentException`; `Integer.MIN_VALUE` makes three, by
+  `InvalidDataAccessApiUsageException`. Carve-out 4 rightly left it alone. Resolved by widening
+  carve-out 2 so Iteration 4 may correct that Javadoc - and no other test documentation - to
+  describe the post-Toggle behavior.
+- **Carve-out 2's "three expectations" was ambiguous.** Each of the three methods also asserts the
+  500-specific `"An internal server error occurred."`, which cannot hold after the Toggle, and
+  the method names say `IsInternalServerError`. Resolved by listing in carve-out 2 exactly what
+  Iteration 4 may do to those three methods: rename, change the status, remove that one
+  assertion, keep the shared-layout assertions, and assert no 400 body text.
+- **Section 3's row format did not describe Iteration 3's three-commit row.** Resolved by stating
+  that form explicitly in section 3.
+
+This review lands as Iteration 3's review-record commit, `Record Iteration 3 fresh-session
+review`, named in Iteration 3's section 3 row under `review:` and in the Phase 2 entry of section
+6. It is not ledger maintenance: it widens carve-out 2, which is a migration decision, and section
+3 excludes those from ledger maintenance.
+
 ### 6. Macro-pattern migration state - Branch-by-Abstraction
 
 - [x] **Phase 0 - Characterize.** `/vets.html` page domain pinned, including today's 500s.
@@ -430,6 +535,9 @@ them as defects.
       **`@ResponseStatus` is deliberately absent** - no Iteration 3 test demands it; Iteration 4's
       HTTP contract test fails first and then drives both the selection and the status binding in
       one behavioral change (decided 2026-09-23).
+      Review-record commit: `Record Iteration 3 fresh-session review`, 2026-09-23 - the post-green
+      fresh-session review, verdict **appropriately scoped** (section 5.2). CLAUDE.md only; it
+      widens carve-out 2 and changes no criterion, test or implementation.
 - [ ] **Phase 3 - Toggle.** Validating translation selected; **functional criterion AC-D1 met**.
       Commit: _pending_
 - [ ] **Phase 4 - Remove. OPEN, and expected to stay open. The macro-pattern migration is
