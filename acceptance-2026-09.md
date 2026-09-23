@@ -249,10 +249,102 @@ observed on the first attempt, with any re-run stated as a re-run.
 
 ## 7. Amendments
 
-_None. Empty at creation._
-
 Any change to section 1 after the setup commit is recorded here with a date, the old text, the new
 text and the reason. Section 1 is never edited in place.
+
+### Amendment 1 - 2026-09-23 - the `page` lower bound covers `Integer.MIN_VALUE`
+
+**This amendment introduces criterion row 11.** Section 1 is not edited; row 11 is stated here and
+read together with the table there.
+
+**Old text.** Section 1's table ends at row 10 and has no row for `?page=-2147483648`. Rows 1 and 2
+cover `?page=0` and `?page=-1` only, and section 5 lists no preserved behavior for the integer
+extreme. The criterion was therefore silent on that input.
+
+**New text.** Criterion row 11, continuing section 1's numbering:
+
+| # | Request | Status | Externally observable condition | vs. today |
+|---|---|---|---|---|
+| 11 | `GET /vets.html?page=-2147483648` | **400** | response rendered by `error.html` through the shared layout, not the Whitelabel error page; identical to rows 1 and 2 | **CHANGED** from 200 with an empty table |
+
+Rows 1, 2 and 11 are three witnesses to a single rule. This amendment states that rule once, so
+that no further gap of this kind can open:
+
+> After the Toggle, every `int` value of `page` strictly below 1 answers 400. No value between the
+> witnesses is excepted.
+
+One step outside the `int` range, `?page=-2147483649`, already answers 400 today because parameter
+binding fails, and is unchanged by this amendment - that is row 7's mechanism, not this rule's.
+The two are distinguishable only at the MVC layer (section 3.1), never from a `TestRestTemplate`
+response.
+
+**Reason.** `?page=-2147483648` answers **200 with an empty table today, not 500**, because
+`page - 1` overflows to `Integer.MAX_VALUE`, which is a legal page index. This was discovered
+during Iteration 2 on 2026-09-22, recorded in `CLAUDE.md` section 6, and pinned by
+`VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected`. A `page < 1`
+bound turns that input from 200 into 400 - a change to an externally observable status that the
+criterion as frozen does not authorize. The product decision is that this input is exactly as
+invalid as `?page=0`: the current 200 is an artifact of two's-complement wrap, not an intended
+contract. Recording it here rather than absorbing it silently at the Toggle is the purpose of this
+section.
+
+**Not changed by this amendment.** Row 6 (`?page=999` -> 200) stands; the upper end remains a
+separate product decision (section 2.4). The 400 body text remains outside the contract (section
+2.6) and no message key is added (section 2.5). Rows 7, 8, 9 and 10 are untouched, and no
+kill-switch condition is engaged: no `@ExceptionHandler`, no `@ControllerAdvice`, no
+`OwnerController` edit, no file under `src/main/resources/messages/`.
+
+#### Failing witness for row 11
+
+Added to section 4's table by this amendment:
+
+| Row | Break this | Expect this to fail |
+|---|---|---|
+| 11 | replace the `page < 1` check in the selected translation with `page - 1 < 0` | `integerMinValuePageIsBadRequest` |
+
+That witness is exact rather than duplicative: `page - 1 < 0` is false for `Integer.MIN_VALUE` and
+true for every other rejected value, so breaking it separates row 11 from rows 1 and 2 instead of
+failing all three together.
+
+#### The before-witness gap, and how it is closed
+
+Today's 200 for this input is pinned only at unit level. `VetPaginationCharacterizationTests` has
+no HTTP-level pin for it, so the 200 -> 400 transition would otherwise land with no
+contract-level *before* witness - precisely what section 4's failing-witness discipline exists to
+prevent. Closing it requires one new characterization method, landing **before** the Toggle, and
+therefore two carve-out changes in `CLAUDE.md` section 4, made together with this amendment.
+
+#### Planned Iteration 3 and 4 test mapping
+
+Row 11 splits across two iterations, because the exception type it depends on does not exist until
+Iteration 3 and is not selected until Iteration 4.
+
+| It. | Level | Test class | Method | Asserts |
+|---|---|---|---|---|
+| 3 | `@SpringBootTest` | `VetPaginationCharacterizationTests` | `integerMinValuePageServesAnEmptyTable` (new, **lands green**) | today's 200 and zero vet rows - the HTTP-level before-witness |
+| 3 | plain JUnit | `VetPageRequestsTests` (new methods, validating translation only) | `validatedRejectsIntegerMinValue` | `InvalidVetPageException` is thrown |
+| 3 | plain JUnit | as above | `validatedRejectsPageZero`, `validatedRejectsNegativePage`, `validatedAcceptsPageOne`, `validatedAcceptsPageFarBeyondTheLast` | the `page < 1` rule and its accepted side |
+| 4 | `@SpringBootTest` | `VetPaginationContractTests` | `integerMinValuePageIsBadRequest` | 400, shared-layout error page, not Whitelabel - criterion row 11 |
+| 4 | `@WebMvcTest` | the section 3.1 assertion, if written | - | `getResolvedException()` is `InvalidVetPageException`, distinguishing row 11 from row 7's `MethodArgumentTypeMismatchException` |
+
+`VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected` needs **no**
+change in either iteration: it tests `unvalidated`, which survives the Toggle untouched. No
+carve-out covers it and none is needed; the standing rule that a test which drove an
+implementation is never edited applies to it in full.
+
+Sequencing note for Iteration 3: the green characterization commit lands as its own commit
+**before** the iteration's red/green pair, so each commit stays single-purpose and kill-switch
+condition 3 - "any iteration needs a second corrective commit to go green" - is not tripped by a
+commit that was planned as separate.
+
+#### Consequential correction to this document's line references
+
+Recorded here because section 1 is never edited in place. Iteration 2 moved the page translation
+out of `VetController`, so the references written at the setup commit no longer resolve: page size
+5 is now `VetPageRequests.java:38`, not `VetController.java:60` as section 1 states; the
+translation is `VetPageRequests.java:52`; and `VetController.findPaginated` is
+`VetController.java:57-59`. Section 8's `VetController.java:44-48`, `:50-57`, `:59-63` and `:65-72`
+are stale by the same shift. The criterion itself is unaffected - only the citations moved.
 
 ## 8. Evidence references
 

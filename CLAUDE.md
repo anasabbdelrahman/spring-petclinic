@@ -152,8 +152,12 @@ staleness check at the end of section 4 before proposing work.
 ### 2. Pathology inventory
 
 - **Unvalidated framework-boundary parameter:** `@RequestParam(defaultValue = "1") int page`
-  reaches `PageRequest.of(page - 1, 5)` with no bound at either end
-  (`VetController.java:45, 59-63`).
+  (`VetController.java:43`) reaches `PageRequest.of` with no bound at either end. Since
+  Iteration 2 the translation sits behind the seam rather than inline in the controller:
+  `VetController.findPaginated` (`VetController.java:57-59`) delegates to
+  `VetPageRequests.unvalidated` (`VetPageRequests.java:51-53`), which calls
+  `PageRequest.of(page - 1, PAGE_SIZE)` (`VetPageRequests.java:52`) with `PAGE_SIZE = 5`
+  (`VetPageRequests.java:38`). The missing bound is unchanged; only its location moved.
 - **Pagination unobserved by the existing tests:** the existing `VetControllerTests` do not
   observe pagination because they stub `findAll(any(Pageable.class))`
   (`VetControllerTests.java:77-78`) and do not capture or assert the `Pageable`. A new
@@ -163,26 +167,54 @@ staleness check at the end of section 4 before proposing work.
 - **Duplicated idiom across packages:** the identical unbounded pagination pair lives in
   `OwnerController.java:120-133`. Out of scope here (PAID D5) and a trap - a fix generalised
   across both controllers breaks `paginationErrorIsNotTreatedAsNotFound`.
-- **Model attribute the template never reads:** `totalItems` (`VetController.java:54`) - PAID D7,
+- **Model attribute the template never reads:** `totalItems` (`VetController.java:52`) - PAID D7,
   out of scope, do not tidy.
 - **Error view with no 400 case, echoing exception text:** `error.html:11-15` switches on
   `${status}` with cases `404`, `500` and `*` only; `error.html:18` renders `${message}`
   unconditionally.
 - **Absent pathologies, stated so they are not hunted:** no god class, no large static method, no
-  direct instantiation in the change area, no external integration. `VetController` is 74 lines.
+  direct instantiation in the change area, no external integration. `VetController` is 70 lines
+  (74 before Iteration 2's extraction).
 
 ### 3. Techniques applied
 
 | Date | It. | Technique (supplement) | Invariant that governs the diff | Macro phase | Target | Commit |
 |---|---|---|---|---|---|---|
-| 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | this commit — Characterize /vets.html page contract (plan-step 1/4) |
-| 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | this commit — Extract vet page request translation behind a seam (plan-step 2/4) |
+| 2026-09-22 | 1/4 | Section 2: Pin behavior, then change | Section 2 characterization invariant | Phase 0 | `/vets.html` page domain | Characterize /vets.html page contract (plan-step 1/4) — green only, carve-out 1 |
+| 2026-09-22 | 2/4 | Section 6 time-budget move: Extract pure function | BbA Phase 1 (Abstract) | Phase 1 | `VetController.findPaginated` | red: Add tests for the vet page request translation; green: Extract vet page request translation behind a seam (plan-step 2/4) |
 | _pending_ | 3/4 | Section 1: Add new code in a new class | decision tree, new-class branch, plus BbA Phase 2 (Implement) | Phase 2 | `InvalidVetPageException`, `VetPageRequests` | _pending_ |
 | _pending_ | 4/4 | Decision tree, bug-fix branch | "do not modify other code while fixing" | Phase 3 | `findPaginated` selection | _pending_ |
 
-Append one row per landed iteration; never rewrite a prior row. If a diff turned out to be
-constrained by an invariant other than the one named, record that - a mismatched quotation is
-itself a finding, and two occurred during planning (see section 5).
+**One row per numbered implementation iteration** - the four of this migration's plan - and never
+one row per commit. An iteration that lands as a red/green pair occupies a single row that names
+both commits, labelled `red:` and `green:`, in that order. An iteration exempted by a carve-out
+lands green only and says so.
+
+**Three kinds of commit carry no iteration row.** Each is tracked in the section that owns it, so
+its absence from this table is correct rather than a discrepancy:
+
+| Kind | Tracked in | Landed so far |
+|---|---|---|
+| Setup | this ledger's section 1 (header, criterion, kill switches) | `Charter vet pagination migration (setup)` |
+| Acceptance amendment | `acceptance-2026-09.md` section 7, dated and reasoned | Amendment 1, 2026-09-23 |
+| Ledger maintenance | the section whose text it corrects | `Fix stale characterization SHA in the acceptance ledger` |
+
+**A ledger-maintenance commit is defined by purpose, not by the paths it touches.** It corrects
+ledger metadata, a stale or wrong reference, or a recording error, and it does **not** change an
+acceptance criterion, a migration decision, a phase state, or any implementation. Touching only
+documentation is necessary but not sufficient: a setup commit and an acceptance-amendment commit
+both touch documentation alone and neither qualifies, because both *decide* something rather than
+correct a record. `ba08159` - *Fix stale characterization SHA in the acceptance ledger*, verified
+an ancestor of `HEAD` by `git merge-base --is-ancestor` - qualifies: it replaced an unreachable
+pre-amend SHA with the landed one and decided nothing. The staleness check in section 4 is worded
+to match.
+
+**Commits are cited by subject, not by SHA**, for the reason recorded in section 5. Do not write
+`this commit` in a row: it is unambiguous only in the commit that adds the row and ambiguous for
+every reader afterwards. **Do not rewrite an accurate prior row. A verified ledger error may be
+corrected, with the reason recorded.** If a diff turned out to be constrained by an invariant
+other than the one named, record that - a mismatched quotation is itself a finding, and two
+occurred during planning (see section 5).
 
 ### 4. Standing prompt invariants
 
@@ -230,23 +262,36 @@ Codebase-specific rules that must hold in every prompt touching this migration:
 - **Out of scope, do not touch while nearby:** deterministic sort (D3), cache bound (D2),
   duplicated pagination (D5), dead `totalItems` (D7), `Specialty` native hint (D9), actuator
   exposure.
-- **Two carve-outs from the Test plan section above, valid only inside this migration.** That
-  section continues to govern all other work in this repository.
+- **Carve-outs from the Test plan section above, valid only inside this migration.** That
+  section continues to govern all other work in this repository. Carve-outs 2 and 4 were changed
+  on 2026-09-23 by `acceptance-2026-09.md` section 7, Amendment 1; carve-outs 1 and 3 are as
+  chartered.
   1. *Iteration 1's characterization commit lands green.* It pins today's behavior and therefore
      cannot be red, so the red-phase gate's "confirm it fails for the expected reason" does not
      apply to it. Formatting, `git diff --check` and the separate-commit rule all still do.
-  2. *Iteration 4 may update exactly two expectations* - those for `?page=0` and `?page=-1` - in
-     `VetPaginationCharacterizationTests`, and nothing else in that file. The technique prescribes
-     it: the tests should fail in the specific places the behavior was intended to change. The
-     commit message names both the behavior change and the test delta.
+  2. *Iteration 4 may update exactly three expectations* - those for `?page=0`, `?page=-1` and
+     `?page=-2147483648` - in `VetPaginationCharacterizationTests`, and nothing else in that file.
+     The technique prescribes it: the tests should fail in the specific places the behavior was
+     intended to change. The commit message names the behavior change and all three test deltas.
+     **Widened from two to three on 2026-09-23** by Amendment 1, which brought
+     `?page=-2147483648` inside the criterion as row 11.
   3. *`VetPaginationContractTests` is frozen while it drives the implementation.* It is the test
      that drives Iteration 4, so the standing rule - the test that drove an implementation is
      never edited to accommodate it - applies to it in full. Carve-out 2 does not weaken that
      rule: the characterization test pins the *old* behavior and drove nothing.
+  4. *Iteration 3 may add exactly one method to `VetPaginationCharacterizationTests`* -
+     `integerMinValuePageServesAnEmptyTable` - and nothing else in that file. It lands **green**,
+     for the same reason carve-out 1 exempts Iteration 1: it pins today's behavior and therefore
+     cannot be red. It lands as its own commit, before the iteration's red/green pair, so each
+     commit stays single-purpose and kill-switch condition 3 is not tripped by a commit that was
+     planned as separate. Without it, Amendment 1's row 11 changes an observable status from 200
+     to 400 with no HTTP-level *before* witness. **Added 2026-09-23** by Amendment 1.
 - **Staleness check, every session start, before proposing work:** does section 6's phase list
-  match `git log --oneline`? Does section 3 have one row per landed commit? Does section 2 still
-  describe `VetController.findPaginated` as it reads today? A discrepancy is a ledger bug - fix
-  the ledger before doing any new work.
+  match `git log --oneline`? Does section 3 have one row per landed **numbered implementation
+  iteration** - not per commit - with every red/green pair named in its single row, and every
+  setup, acceptance-amendment and ledger-maintenance commit correctly absent and tracked in the
+  section that owns it? Do section 2's file and line references still resolve to the code as it
+  reads today? A discrepancy is a ledger bug - fix the ledger before doing any new work.
 
 ### 5. Claude failure modes specific to this codebase
 
@@ -287,22 +332,67 @@ decision and a note saying why the mode no longer applies.
 - **Cites a rewritten commit's pre-amend SHA.** `acceptance-2026-09.md:151` named `8229a45` as the
   commit carrying `VetPaginationCharacterizationTests`; that object is unreachable from HEAD - no
   branch contains it, `git merge-base --is-ancestor` says no - and `de7c7d0` is the landed one, with
-  the same subject and committer timestamp. Defence: cite commits by the `this commit — <subject>`
-  convention this ledger already uses, and check any SHA appearing in a document with
-  `git merge-base --is-ancestor` before trusting it.
+  the same subject and committer timestamp. Defence: cite commits by **subject**, the convention
+  section 3 states, and check any SHA appearing in a document with `git merge-base --is-ancestor`
+  before trusting it. The earlier `this commit — <subject>` form is withdrawn: it dodged SHA rot
+  but was unambiguous only inside the commit that wrote it, and two rows ended up each claiming to
+  be "this commit". The subject alone was always the identifying part.
+- **Moves code without re-pointing the ledger's file:line references.** Iteration 2 extracted
+  `page -> Pageable` out of `VetController` and left section 2 pointing at `VetController.java:45,
+  59-63` for a `PageRequest.of` call that had moved to `VetPageRequests.java:52`, at `:54` for a
+  `totalItems` now on `:52`, and at "74 lines" for a 70-line file. The fresh-session review after
+  Iteration 2 caught all four. Defence: any commit that moves a line cited anywhere in section 2
+  re-points that citation in the same commit, and the session-start staleness check resolves the
+  references rather than eyeballing them.
 - _pending - populate from the reviewer checks as iterations land._
+
+#### 5.1 Iteration 2 fresh-session review - observations recorded, no action taken
+
+The overfitting review after Iteration 2 returned a verdict of **appropriately scoped**: eight of
+the nine `VetPageRequestsTests` protect behavior observable before the extraction, and an
+adversarial sweep of behavior-preserving alternative extractions found none that these tests
+reject except a change of the extracted method's signature, which is inherent to unit-testing any
+extraction. Two tests - `noSortOrderIsApplied` and
+`integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected` - guard behavior that
+`VetPaginationCharacterizationTests` structurally cannot observe, and both reject plausible
+"tidying" extractions (adding a `Sort`; a `page < 1` guard clause or `Math.subtractExact`).
+
+Three observations were recorded rather than acted on. **No existing test is renamed, removed or
+modified on the strength of any of them**; they are noted so a later reader does not rediscover
+them as defects.
+
+- **Two test names claim more than their bodies assert.**
+  `pageZeroIsRejectedByTheFrameworkAndNotByThisTranslation` and its negative-page twin assert only
+  `assertThrows(IllegalArgumentException.class, ...)`, which cannot attribute the throw to
+  `PageRequest.of` rather than to `VetPageRequests` - a guard-clause implementation inside
+  `VetPageRequests` would pass both while making both names false. This is the same species as
+  "infers exception identity from an HTTP status" above. It is **not fixed**: these are committed
+  tests that drove an implementation, so the standing rule forbids editing them, and strengthening
+  the bodies would mean asserting framework message text, which this ledger discourages. Revisit
+  only if the file is legitimately touched for another reason.
+- **The offset assertion is redundant, not wrong.**
+  `offsetFollowsFromThePageIndexAndTheContractPageSize` cannot fail independently of the page-index
+  and page-size tests, because `getOffset()` is `pageNumber * pageSize` by construction for a
+  `PageRequest`. Offset is genuinely observable - it becomes the SQL `OFFSET` - so the assertion is
+  legitimate; it simply adds no discriminating power. Left in place.
+- **These nine tests lose their subject at the Toggle.** Once Iteration 4 selects the validating
+  translation, `VetPageRequests.unvalidated` has zero callers and all nine tests exercise code no
+  request reaches - permanently, because Phase 4 (Remove) is expected to stay open. The class
+  javadoc's claim that it "must keep passing unchanged" stays true and stays uninformative. This is
+  a recorded consequence of leaving Phase 4 open on purpose, not an oversight; it closes when
+  Phase 4 closes, and not before.
 
 ### 6. Macro-pattern migration state - Branch-by-Abstraction
 
 - [x] **Phase 0 - Characterize.** `/vets.html` page domain pinned, including today's 500s.
-      Commit: this commit — Characterize /vets.html page contract (plan-step 1/4), 2026-09-22.
+      Commit: `Characterize /vets.html page contract (plan-step 1/4)`, 2026-09-22.
       `VetPaginationCharacterizationTests`, 8 tests, all green; whole suite 99 tests, 0
       failures, 0 errors, 0 skipped. Every expected value was captured by running the
       unmodified application and recording its responses, not copied from a prior document.
 - [x] **Phase 1 - Abstract.** Page translation behind a seam; behavior identical.
       Commits: `Add tests for the vet page request translation` (red, `:compileTestJava` failing
-      with "cannot find symbol: variable VetPageRequests") and this commit — Extract vet page
-      request translation behind a seam (plan-step 2/4) (green), both 2026-09-22.
+      with "cannot find symbol: variable VetPageRequests") and `Extract vet page request
+      translation behind a seam (plan-step 2/4)` (green), both 2026-09-22.
       `VetPageRequests.unvalidated` is the seam and `VetController.findPaginated` its only caller.
       `VetPageRequestsTests`, 9 tests, green; `VetPaginationCharacterizationTests` proved
       byte-identical to its `de7c7d0` revision by `git diff --exit-code` and its 8 tests still
@@ -351,9 +441,14 @@ whose only rejection is `pageNumber < 0`, and `:71-73`, whose `getOffset` uses l
 `Integer.MAX_VALUE * 5` does not overflow either; pinned by
 `VetPageRequestsTests.integerMinValueWrapsToTheHighestPageIndexAndIsNotRejected`, which passes.
 Consequence for Iteration 4: a `page < 1` bound turns this input from 200 into 400. That is a
-behavior change **outside** the frozen criterion - to be decided in Iteration 3 or 4 and, if
-accepted, recorded as an `acceptance-2026-09.md` section 7 amendment with a date and a reason,
-never absorbed silently.
+behavior change **outside** the criterion as frozen.
+
+**Decided 2026-09-23, and no longer open.** The product decision is that every `int` page value
+below 1, `Integer.MIN_VALUE` included, answers 400 after the Toggle. It is recorded as
+`acceptance-2026-09.md` section 7, Amendment 1, which introduces criterion row 11, states the
+rule the three witnesses share, adds row 11's failing witness, and maps the work across
+Iterations 3 and 4. Two carve-out changes follow from it: carve-out 4 is new, and carve-out 2
+widens from two expectations to three. The 200 was never absorbed silently.
 
 **Observed but deliberately not asserted.** Under `gradlew bootRun` the 500 page body contains the
 framework string `Page index must not be less than zero`; under `@SpringBootTest` the same page
@@ -366,7 +461,8 @@ status-specific message and says nothing about the exception text.
 **Decisions log.** 400 on HTTP-semantic grounds, not 404 - the earlier 404 preference was a
 view-reuse convenience and was corrected. The 400 body text is outside the contract and no message
 key is added; localized `error.400` support is a separate follow-up. `?page=999` stays 200 as a
-separate product decision. No runtime toggle. The D2 cache finding - Caffeine is runtime-scope
-only in both builds and no JSR-107 provider artifact is declared, so
-`CacheConfiguration.petclinicCacheConfigurationCustomizer()` is probably inert - is INFERRED, out
-of scope here, and deferred to its own investigation.
+separate product decision. No runtime toggle. Every `int` page below 1, `Integer.MIN_VALUE`
+included, answers 400 after the Toggle - decided 2026-09-23, Amendment 1, criterion row 11. The
+D2 cache finding - Caffeine is runtime-scope only in both builds and no JSR-107 provider artifact
+is declared, so `CacheConfiguration.petclinicCacheConfigurationCustomizer()` is probably inert -
+is INFERRED, out of scope here, and deferred to its own investigation.
