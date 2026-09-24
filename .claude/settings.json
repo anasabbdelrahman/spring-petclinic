@@ -1,4 +1,50 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Bash(git diff)",
+      "Bash(git diff:*)",
+      "Bash(git log)",
+      "Bash(git log:*)"
+    ],
+    "ask": [
+      "Bash(git commit)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Bash(git push --force)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push -f)",
+      "Bash(git push -f:*)",
+      "Bash(git push --mirror)",
+      "Bash(git push --mirror:*)",
+      "Bash(git reset --hard)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f)",
+      "Bash(git clean -f:*)",
+      "Bash(git clean --force)",
+      "Bash(git clean --force:*)",
+      "Bash(git clean -fd)",
+      "Bash(git clean -fd:*)",
+      "Bash(git clean -df)",
+      "Bash(git clean -df:*)",
+      "Bash(git clean -fx)",
+      "Bash(git clean -fx:*)",
+      "Bash(git clean -xf)",
+      "Bash(git clean -xf:*)",
+      "Bash(git clean -fdx)",
+      "Bash(git clean -fdx:*)",
+      "Bash(git clean -xdf)",
+      "Bash(git clean -xdf:*)",
+      "Bash(git clean -dxf)",
+      "Bash(git clean -dxf:*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -27,6 +73,15 @@
           {
             "type": "command",
             "command": "jq -e '.tool_input.file_path | test(\"(^|/)\\\\.env(\\\\..*)?$\") | not' >/dev/null || { echo 'refused: .env files are protected' >&2; exit 2; }"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-git.sh"
           }
         ]
       }

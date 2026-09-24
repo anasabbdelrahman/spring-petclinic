@@ -1,0 +1,205 @@
+Guard Hook Test Output - 2026-09
+================================
+
+Subject: .claude/hooks/guard-git.sh (PreToolUse hook, matcher "Bash")
+Date: 2026-09-23 (first run); sections 2, 3 and 5 re-run 2026-09-24 after
+      the permission rules were corrected to the `:*` prefix syntax
+Branch: homework/controlling-claude-actions
+
+Method
+------
+Every case is a JSON payload with the structure Claude Code sends to a
+PreToolUse hook for a Bash tool call, piped to the hook on stdin:
+
+  {"session_id":"<session-id>","transcript_path":"<transcript-path>",
+   "cwd":"<project-dir>","permission_mode":"default",
+   "hook_event_name":"PreToolUse","tool_name":"Bash",
+   "tool_input":{"command":"<command under test>","description":"guard-git test"},
+   "tool_use_id":"<tool-use-id>"}
+
+  printf '%s' "$payload" | .claude/hooks/guard-git.sh
+  echo "exit: $?"
+
+No command under test was executed. Each one exists only as a JSON string;
+no Git command ran against the repository and nothing was pushed.
+Session ids and local paths are replaced by <placeholders>; nothing else is
+edited.
+
+Exit codes: 0 = allowed by the hook (permissions still apply);
+            2 = blocked, stderr is returned to Claude as the reason.
+
+1. Required cases
+-----------------
+Test 1: `git push origin main --force` -> exit 2 (blocked)
+Test 2: `git status`                   -> exit 0 (allowed)
+Both are shown verbatim in section 2, and again through the registered
+command string in section 3.
+
+2. All cases (runner output, verbatim)
+--------------------------------------
+Test 1: PASS
+  command:  git push origin main --force
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused force push (--force). Destructive Git operations need a human.
+
+Test 2: PASS
+  command:  git status
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 3: PASS
+  command:  git reset --hard HEAD~1
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused hard reset (--hard). Destructive Git operations need a human.
+
+Test 4: PASS
+  command:  git clean -fd
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused forced clean (-fd). Destructive Git operations need a human.
+
+Test 5: PASS
+  command:  git push --mirror origin
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused mirror push (--mirror). Destructive Git operations need a human.
+
+Test 6: PASS
+  command:  git log --oneline -5
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 7: PASS
+  command:  git push -f origin main
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused force push (-f). Destructive Git operations need a human.
+
+Test 8: PASS
+  command:  git push --force-with-lease origin main
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused force push (--force-with-lease). Destructive Git operations need a human.
+
+Test 9: PASS
+  command:  git push origin +main
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused force push (refspec +main). Destructive Git operations need a human.
+
+Test 10: PASS
+  command:  git status && git push origin main --force
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused force push (--force). Destructive Git operations need a human.
+
+Test 11: PASS
+  command:  git -C /tmp/repo push origin main -uf
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused force push (-uf). Destructive Git operations need a human.
+
+Test 12: PASS
+  command:  git clean -xdf
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused forced clean (-xdf). Destructive Git operations need a human.
+
+Test 13: PASS
+  command:  git -c clean.requireForce=false clean -d
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused forced clean (clean.requireForce overridden). Destructive Git operations need a human.
+
+Test 14: PASS
+  command:  git push origin main
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 15: PASS
+  command:  git reset --soft HEAD~1
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 16: PASS
+  command:  git clean -n
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 17: PASS
+  command:  git diff --stat
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 18: PASS
+  command:  git commit -m "explain why --force is refused"
+  expected: exit 0
+  actual:   exit 0
+  stderr:   <empty>
+
+Test 19: PASS
+  payload:  not json (malformed stdin)
+  expected: exit 2
+  actual:   exit 2
+  stderr:   guard-git: refused the command: unreadable hook payload. Destructive Git operations need a human.
+
+Summary: 19 passed, 0 failed, 19 total
+Runner exit: 0
+
+3. Hook invoked through its registered command string
+-----------------------------------------------------
+Registered-command check (command string read from .claude/settings.json, run via sh -c)
+registered: "$CLAUDE_PROJECT_DIR"/.claude/hooks/guard-git.sh
+  command: git push origin main --force -> exit 2 (expected 2) stderr: guard-git: refused force push (--force). Destructive Git operations need a human.
+  command: git status -> exit 0 (expected 0) stderr: <empty>
+
+Existing Write|Edit .env hook, still registered and unchanged
+  file_path: <project-dir>/.env -> exit 2 stderr: refused: .env files are protected
+  file_path: src/main/resources/application.properties -> exit 0 stderr: <empty>
+
+4. Incidental live refusal in the authoring session
+---------------------------------------------------
+After the hook was registered in .claude/settings.json, the agent's own
+Bash call that assembled this file contained the literal text
+`git push origin main --force` inside a heredoc (documentation text, not a
+push). Claude Code ran the hook on that call and refused it before the
+shell started; nothing ran. The complete error, as received:
+
+  PreToolUse:Bash hook error: ["$CLAUDE_PROJECT_DIR"/.claude/hooks/guard-git.sh]: guard-git: refused force push (--force). Destructive Git operations need a human.
+
+This shows two things: the registration is live in a real session, and the
+hook fails closed on text that only mentions a dangerous form (see the
+false-positive note in agent-controls-2026-09.md). The file was then built
+with the static text written by the Write tool instead.
+
+5. Static checks
+----------------
+$ bash -n .claude/hooks/guard-git.sh -> exit 0
+$ jq empty .claude/settings.json -> exit 0  (valid JSON only; this does not test whether any permission rule matches a command)
+$ test -x .claude/hooks/guard-git.sh -> exit 0 (mode -rwxr-xr-x)
+$ diff of .hooks at HEAD vs working tree, with the new Bash entry removed -> exit 0  (0 = every existing hook unchanged)
+  PreToolUse matchers now: Write|Edit, Bash
+$ permission rule counts: allow 6, ask 4, deny 28
+$ rules still using ' *' or a bare trailing '*' (not ':*') -> exit 1  (1 = none)
+$ git diff --check  (tracked change: .claude/settings.json) -> exit 0
+$ git diff --no-index --check /dev/null agent-controls-2026-09.md -> exit 1  (1 = new file, no whitespace errors)
+$ git diff --no-index --check /dev/null .claude/hooks/guard-git.sh -> exit 1  (1 = new file, no whitespace errors)
+$ git diff --no-index --check /dev/null guard-hook-output-2026-09.txt -> exit 1  (1 = new file, no whitespace errors)
+$ trailing-whitespace grep over the 4 changed files -> exit 1  (1 = none)
+$ CR grep over the 4 changed files -> exit 1  (1 = none)
+final newline: agent-controls-2026-09.md OK
+final newline: .claude/hooks/guard-git.sh OK
+final newline: guard-hook-output-2026-09.txt OK
+final newline: .claude/settings.json OK
+$ plain-http grep (nohttp) over the 4 changed files -> exit 1  (1 = none)
+
+The checks above ran before this section was appended; the final file was
+re-checked afterwards with the same whitespace, CR and final-newline checks.
