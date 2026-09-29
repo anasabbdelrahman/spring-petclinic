@@ -47,28 +47,35 @@ jobs:
               token, credential, or file outside the repository checkout.
             - Your only write action is exactly ONE `gh pr comment` on the PR number
               above. Do not comment on any other PR or issue.
+            - Invoke each gh command as a separate Bash call beginning exactly with
+              `gh`. Do not use environment prefixes, pipes, redirections, command
+              substitution, or compound commands.
 
             Steps:
             1. Run `gh pr view <PR NUMBER>` and `gh pr diff <PR NUMBER>`.
             2. Identify changes under src/main/** that alter runtime behavior
                (logic, validation rules, control flow, returned data, HTTP handling).
                Ignore pure refactors, formatting, comments, docs, and build files.
-            3. For each behavior change, decide whether the PR adds or updates tests
-               under src/test/** that would fail if that behavior regressed. You may
-               Read/Grep/Glob the checkout to find the relevant existing tests.
+            3. Use the PR diff to determine whether the PR adds or updates tests
+               under src/test/** that would fail if the changed behavior regressed.
+               When tests are absent, infer the mirrored test class from the
+               production package and class name.
             4. Do NOT comment on style, naming, architecture, performance, security,
                or anything else outside this one concern.
 
-            Output - post exactly one comment with
-            `gh pr comment <PR NUMBER> --body "<text>"`:
-            - If gaps exist: a heading "Missing tests for production behavior changes",
-              then one bullet per gap: file:line, the untested behavior, and the test
-              class where a test belongs.
+            Output - post exactly one comment with exactly one separate command
+            in this form:
+            gh pr comment <PR NUMBER> --body '<text>'
+            - The body must not contain newlines, Markdown backticks, dollar signs,
+              command substitutions, or single quotes.
+            - If gaps exist: one plain-text line beginning "Missing-tests review:"
+              followed by semicolon-separated findings. Each finding must include
+              file:line, the untested behavior, and the mirrored test class.
             - If none: exactly this one line and nothing else:
               "✅ Missing-tests review: no production behavior changes lack test coverage."
           claude_args: |
             --max-turns 10
-            --tools "Bash,Read,Glob,Grep"
-            --allowedTools "Read(./**),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
+            --tools "Bash"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
             --disallowedTools "mcp__*"
             --strict-mcp-config
