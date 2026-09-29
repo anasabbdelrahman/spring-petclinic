@@ -76,7 +76,6 @@ jobs:
           claude_args: |
             --max-turns 10
             --tools "Bash"
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
+            --allowedTools "Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr comment *)"
             --disallowedTools "mcp__*"
             --strict-mcp-config
-          show_full_output: true
