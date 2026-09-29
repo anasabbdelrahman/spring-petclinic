@@ -79,4 +79,3 @@ jobs:
             --allowedTools "Bash"
             --disallowedTools "mcp__*"
             --strict-mcp-config
-          show_full_output: true
