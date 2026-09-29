@@ -46,6 +46,9 @@ public class PetValidator implements Validator {
 		else if (name.length() > MAX_NAME_LENGTH) {
 			errors.rejectValue("name", "size", "Name must be no more than 30 characters");
 		}
+		else if (name.chars().allMatch(Character::isDigit)) {
+			errors.rejectValue("name", "invalid", "Name must not consist only of digits");
+		}
 
 		// type validation
 		if (pet.isNew() && pet.getType() == null) {
