@@ -15,6 +15,9 @@
  */
 package org.springframework.samples.petclinic.owner;
 
+import java.time.Clock;
+import java.time.LocalDate;
+
 import org.springframework.util.StringUtils;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
@@ -35,6 +38,16 @@ public class PetValidator implements Validator {
 
 	private static final int MAX_NAME_LENGTH = 30;
 
+	private final Clock clock;
+
+	public PetValidator() {
+		this(Clock.systemDefaultZone());
+	}
+
+	PetValidator(Clock clock) {
+		this.clock = clock;
+	}
+
 	@Override
 	public void validate(Object obj, Errors errors) {
 		Pet pet = (Pet) obj;
@@ -53,8 +66,12 @@ public class PetValidator implements Validator {
 		}
 
 		// birth date validation
-		if (pet.getBirthDate() == null) {
+		LocalDate birthDate = pet.getBirthDate();
+		if (birthDate == null) {
 			errors.rejectValue("birthDate", REQUIRED, REQUIRED);
+		}
+		else if (birthDate.isAfter(LocalDate.now(this.clock))) {
+			errors.rejectValue("birthDate", "typeMismatch.birthDate", "Birth date must not be in the future");
 		}
 	}
 

@@ -25,9 +25,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.validation.Errors;
 import org.springframework.validation.MapBindingResult;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,9 +57,13 @@ class PetValidatorTests {
 
 	private static final LocalDate petBirthDate = LocalDate.of(1990, 1, 1);
 
+	private static final ZoneId ZONE = ZoneId.of("UTC");
+
+	private static final LocalDate TODAY = LocalDate.of(2024, 6, 15);
+
 	@BeforeEach
 	void setUp() {
-		petValidator = new PetValidator();
+		petValidator = new PetValidator(Clock.fixed(TODAY.atStartOfDay(ZONE).toInstant(), ZONE));
 		pet = new Pet();
 		petType = new PetType();
 		errors = new MapBindingResult(new HashMap<>(), "pet");
@@ -78,6 +85,18 @@ class PetValidatorTests {
 		pet.setName(petName);
 		pet.setType(petType);
 		pet.setBirthDate(petBirthDate);
+
+		petValidator.validate(pet, errors);
+
+		assertFalse(errors.hasErrors());
+	}
+
+	@Test
+	void validateWithBirthDateToday() {
+		petType.setName(petTypeName);
+		pet.setName(petName);
+		pet.setType(petType);
+		pet.setBirthDate(TODAY);
 
 		petValidator.validate(pet, errors);
 
@@ -120,6 +139,20 @@ class PetValidatorTests {
 			petValidator.validate(pet, errors);
 
 			assertTrue(errors.hasFieldErrors("birthDate"));
+		}
+
+		@Test
+		void validateWithFutureBirthDate() {
+			petType.setName(petTypeName);
+			pet.setName(petName);
+			pet.setType(petType);
+			pet.setBirthDate(TODAY.plusDays(1));
+
+			petValidator.validate(pet, errors);
+
+			assertEquals(1, errors.getErrorCount());
+			assertEquals(1, errors.getFieldErrorCount("birthDate"));
+			assertEquals("typeMismatch.birthDate", errors.getFieldError("birthDate").getCode());
 		}
 
 		@Test
