@@ -25,9 +25,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.validation.Errors;
 import org.springframework.validation.MapBindingResult;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,9 +57,13 @@ class PetValidatorTests {
 
 	private static final LocalDate petBirthDate = LocalDate.of(1990, 1, 1);
 
+	private static final LocalDate today = LocalDate.of(2024, 6, 15);
+
+	private static final Clock fixedClock = Clock.fixed(today.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC);
+
 	@BeforeEach
 	void setUp() {
-		petValidator = new PetValidator();
+		petValidator = new PetValidator(fixedClock);
 		pet = new Pet();
 		petType = new PetType();
 		errors = new MapBindingResult(new HashMap<>(), "pet");
@@ -78,6 +85,18 @@ class PetValidatorTests {
 		pet.setName(petName);
 		pet.setType(petType);
 		pet.setBirthDate(petBirthDate);
+
+		petValidator.validate(pet, errors);
+
+		assertFalse(errors.hasErrors());
+	}
+
+	@Test
+	void validateWithBirthDateToday() {
+		petType.setName(petTypeName);
+		pet.setName(petName);
+		pet.setType(petType);
+		pet.setBirthDate(today);
 
 		petValidator.validate(pet, errors);
 
@@ -120,6 +139,21 @@ class PetValidatorTests {
 			petValidator.validate(pet, errors);
 
 			assertTrue(errors.hasFieldErrors("birthDate"));
+			assertEquals(1, errors.getFieldErrorCount("birthDate"));
+			assertEquals("required", errors.getFieldError("birthDate").getCode());
+		}
+
+		@Test
+		void validateWithFutureBirthDate() {
+			petType.setName(petTypeName);
+			pet.setName(petName);
+			pet.setType(petType);
+			pet.setBirthDate(today.plusDays(1));
+
+			petValidator.validate(pet, errors);
+
+			assertEquals(1, errors.getErrorCount());
+			assertEquals("typeMismatch.birthDate", errors.getFieldError("birthDate").getCode());
 		}
 
 		@Test
