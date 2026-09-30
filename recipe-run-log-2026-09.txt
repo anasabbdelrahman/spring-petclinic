@@ -1,0 +1,483 @@
+recipe-run-log-2026-09.txt
+Week 4 Part 3: Ship a Production Orchestration Recipe (Spring PetClinic)
+Job: read-only boundary-validation and test-evidence audit, one claude -p worker per production Java file
+
+== Metadata
+Date ................... 2026-09-30 (run IDs and timestamps are UTC)
+Branch ................. homework/week4-part3-orchestration-recipe
+Starting commit ........ 90f1498 (90f1498ecd7939c816b6e9080b57270639deb226); HEAD unchanged by all runs
+Script ................. orchestration-recipe-validation-audit-2026-09.sh
+Script SHA-256 ......... 2c6a18a68da63af1a82438a3e30392b38355b663e55878ffa93cd0fa0215b7d3 (small and full runs; current file)
+                         42b36493d23c7bebd9aec0f9b956da51e6e485fb07413298c231972f695c8e6a (calibration; earlier revision,
+                         identical except MAX_BUDGET_USD="0.10" and the ceiling documentation/display)
+Claude Code ............ 2.1.285, claude.ai subscription auth (total_cost_usd is an API list-price estimate)
+Model .................. claude-sonnet-5-5, --effort medium
+Controls ............... --max-turns 6; --max-budget-usd 0.15 (calibration: 0.10, earlier cap);
+                         180 s timeout per attempt (TERM, KILL after 10 s); 2 attempts per item (calibration: 1)
+                         with a single 10-second backoff; 3 concurrent workers; --output-format stream-json
+                         + --json-schema; worker tools limited to StructuredOutput (--tools ""), no MCP
+                         (--strict-mcp-config), --safe-mode, --setting-sources "", inline line-numbered context
+Run directories ........ build/recipe-runs/20260930T122737Z-calibration  (exit 0)
+                         build/recipe-runs/20260930T125301Z-small        (exit 0)
+                         build/recipe-runs/20260930T125811Z-full         (exit 0)
+
+== Results summary
+Mode         Items  Calls  Retries  Succeeded  Failed  Wall clock  Reported cost (USD)  Ceiling (USD)
+calibration      1      1        0          1       0        22 s             0.085666   0.10 (1 x 1 x 0.10)
+small            5      5        0          5       0        48 s             0.385359   1.50 (5 x 2 x 0.15)
+full            11     11        0         11       0        67 s             0.644651   3.30 (11 x 2 x 0.15)
+total           17     17        0         17       0       137 s             1.115676   4.90 approved
+Failure reasons: none. Timeouts: 0. Calls over cap: 0. Isolation verified: 17 of 17 calls.
+Evidence references: calibration 27/27, small 165/165, full 220/221 structurally valid
+(full-run item 05 cited src/main/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java:46).
+The calibration result (USD 0.085666, 86% of the earlier USD 0.10 cap) led to raising the cap to USD 0.15
+before the small run. Retry, timeout, interrupt and isolation-stop paths were exercised only in a
+zero-cost fake-Claude test harness; that synthetic evidence is not part of this log.
+
+== Sanitization
+Sections 1-3 are sanitized copies of the console.log files the script wrote; worker stdout/stderr had
+already been redacted before anything reached build/recipe-runs. One change was made while copying:
+on line 17 of each console, the absolute home-directory prefix of the claude binary path was replaced
+with "~". No other byte differs from the source files. No environment variables, credentials or raw
+temporary data are included.
+
+== Index (line numbers in this file)
+Section 1  calibration console .................. line 52
+Section 2  small-run console .................... line 177
+Section 3  full-run console ..................... line 319
+           full-run audit record (verbatim) ..... line 469 (between the BEGIN/END AUDIT RECORD markers)
+Each section starts with that run's preflight results, then effective limits, outcomes, isolation
+evidence, totals, post-run verification and that run's audit record.
+
+===== SECTION 1: CALIBRATION RUN  (source: build/recipe-runs/20260930T122737Z-calibration/console.log) =====
+orchestration-recipe-validation-audit-2026-09.sh mode=calibration
+started 2026-09-30T12:27:36.751Z
+== Preflight
+INFO  bash 3.2.57(1)-release (/bin/bash)
+PASS  bash >= 3.2
+PASS  command available: git
+PASS  command available: jq
+PASS  command available: perl
+PASS  command available: shasum
+PASS  command available: awk
+PASS  command available: xargs
+PASS  command available: mktemp
+PASS  command available: ps
+PASS  command available: tail
+PASS  command available: wc
+PASS  command available: claude
+INFO  claude 2.1.285 (~/.local/bin/claude)
+INFO  jq jq-1.7.1-apple
+INFO  timeout: built-in watchdog (GNU timeout not required); locking: per-attempt fragments (flock not required)
+PASS  claude version detected
+PASS  claude auth status reports loggedIn (only that field is read)
+PASS  jq supports --rawfile, --slurpfile and named captures
+PASS  perl modules Time::HiRes, POSIX, Encode
+PASS  JSON schema parses
+PASS  script is at the repository root
+PASS  build/recipe-runs is git-ignored
+PASS  item 01 tracked: src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java
+PASS    context for 01 tracked: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+PASS    context for 01 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 01 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS  item 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetController.java
+PASS    context for 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+PASS    context for 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 02 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS    context for 02 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS  item 03 tracked: src/main/java/org/springframework/samples/petclinic/owner/VisitController.java
+PASS    context for 03 tracked: src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+PASS    context for 03 tracked: src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java
+PASS  item 04 tracked: src/main/java/org/springframework/samples/petclinic/vet/VetController.java
+PASS    context for 04 tracked: src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java
+PASS  item 05 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+PASS    context for 05 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 05 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS    context for 05 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS  item 06 tracked: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+PASS    context for 06 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerTests.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java
+PASS  item 07 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 07 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS    context for 07 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS  item 08 tracked: src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+PASS    context for 08 tracked: src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java
+PASS  item 09 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 09 tracked: src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java
+PASS    context for 09 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS  item 10 tracked: src/main/java/org/springframework/samples/petclinic/system/CrashController.java
+PASS    context for 10 tracked: src/test/java/org/springframework/samples/petclinic/system/CrashControllerTests.java
+PASS    context for 10 tracked: src/test/java/org/springframework/samples/petclinic/system/CrashControllerIntegrationTests.java
+PASS  item 11 tracked: src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java
+PASS    context for 11 tracked: src/test/java/org/springframework/samples/petclinic/system/WelcomeControllerTests.java
+INFO  tolerated untracked deliverable: orchestration-recipe-validation-audit-2026-09.sh
+PASS  repository clean (no tracked, staged or unexpected untracked changes)
+INFO  branch homework/week4-part3-orchestration-recipe at 90f1498
+Preflight passed.
+
+== Effective limits
+requested model ........ claude-sonnet-5-5 (effort medium)
+max turns / call ....... 6
+max budget / call ...... USD 0.10
+timeout / attempt ...... 180s (TERM, then KILL after 10s)
+attempts / item ........ 1 (single 10-second backoff before attempt 2)
+concurrency ............ 3
+allowed worker tools ... ["StructuredOutput"] (checked per call from system/init)
+items this run ......... 1
+worst-case ceiling ..... 1 x 1 x USD 0.10 = USD 0.10
+ceilings by mode ....... calibration 1 x 1 x USD 0.10 = USD 0.10; small 5 x 2 x USD 0.10 = USD 1.00; full 11 x 2 x USD 0.10 = USD 2.20
+all three modes ........ USD 3.30
+worker command ......... claude -p --model claude-sonnet-5-5 --effort medium --max-turns 6 --max-budget-usd 0.10 --output-format stream-json --verbose --json-schema <schema> --tools '' --strict-mcp-config --safe-mode --setting-sources '' --permission-mode dontAsk --permission-prompts none --disable-slash-commands --no-session-persistence < prompt
+
+== Run 20260930T122737Z-calibration
+run directory build/recipe-runs/20260930T122737Z-calibration
+workers started 2026-09-30T12:27:38.566Z
+workers finished 2026-09-30T12:28:01.227Z (wall clock 22s, xargs exit 0)
+
+== Outcomes
+05  success  attempts=1  cost=0.08566599999999999  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+
+== Isolation evidence per call
+05.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+
+== Totals
+claude -p invocations (audit lines) .. 1
+retry attempts (attempt > 1) ......... 0
+successful attempts .................. 1
+failed attempts ...................... 0
+failure reasons ...................... none
+timeouts ............................. 0
+calls over budget cap ................ 0
+isolation verified ................... 1 of 1
+permission denials ................... 0
+invalid evidence references .......... 0 of 27
+reported cost total (USD) ............ 0.0857 (reported by 1 of 1 calls)
+sum of attempt durations (s) ......... 22.019
+closest to budget cap ................ item 5 attempt 1 (PetValidator.java): USD 0.0857 of 0.10
+closest to turn cap .................. item 5 attempt 1 (PetValidator.java): 2 of 6 turns
+closest to timeout ................... item 5 attempt 1 (PetValidator.java): 22.019s of 180s
+wall clock (s) ....................... 22
+
+== Post-run verification
+PASS  all 1 audit lines parse independently with jq and each is one physical line
+PASS  audit lines (1) = claude -p invocations (1), one line per invocation marker
+PASS  item 05 final outcome: success after 1 attempt(s)
+PASS  repository state unchanged (tracked, staged, untracked and ignored outside build/recipe-runs)
+PASS  no raw temporary output left behind
+PASS  claude version unchanged during the run (2.1.285)
+
+----- BEGIN AUDIT RECORD (verbatim copy of build/recipe-runs/20260930T122737Z-calibration/audit.ndjson, 1 lines) -----
+{"ts_start":"2026-09-30T12:27:38.809Z","ts_end":"2026-09-30T12:28:00.823Z","duration_ms":22019,"run_id":"20260930T122737Z-calibration","run_type":"calibration","item_index":5,"item":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","attempt":1,"max_attempts":1,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":3199,"cacheReadInputTokens":0,"cacheCreationInputTokens":13418,"webSearchRequests":0,"costUSD":0.08566599999999999,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"6bf7c9d5-f93d-4856-8785-f4ff81756860","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.08566599999999999,"over_budget_cap":false,"duration_api_ms":19985,"usage":{"input_tokens":2,"cache_creation_input_tokens":13418,"cache_read_input_tokens":0,"output_tokens":3199,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":13418,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":3199,"cache_read_input_tokens":0,"cache_creation_input_tokens":13418,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":13418},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.10,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","role":"target","lines":69,"sha256":"1cee4c2a57afd7edb3521fa7a19c4b643f23c2f5b91406ecd638319c6cce9f7f"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","role":"related-production","lines":85,"sha256":"ec77c2d70ae043c6eb441e47ebc93a3d848d8ae9729068e8f4e997aedfa0bbd7"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java","role":"test","lines":139,"sha256":"91a7c7d4273233d61881519447af8690ace3e19f8a34fe4b874ad1534a462487"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java","role":"test","lines":274,"sha256":"29f21b836ebe350364d9b3084bbb7f46c22d360203144d4a4b425e3583403588"}],"prompt_sha256":"69ce0726df97c91899a852aceef8cf60643a8f1cb19a18b10ad559f028766337","structured_output_valid":true,"findings":{"boundaries":4,"validation_rules":5,"validation_gaps":4,"covering_tests":10,"missing_tests":4,"needs_human_review":3},"evidence":{"total":27,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T122737Z-calibration/attempts/05.a1.stdout.jsonl","bytes":36597,"sha256":"6f32d3a3f74a0d27d24a1f97c05ae6a46785b2a97ffd350dfab2eeebc6263f20"},"stderr":{"path":"build/recipe-runs/20260930T122737Z-calibration/attempts/05.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T122737Z-calibration/results/05.json"}
+----- END AUDIT RECORD -----
+finished 2026-09-30T12:28:02.163Z
+===== END SECTION 1 =====
+
+===== SECTION 2: SMALL RUN (5 items)  (source: build/recipe-runs/20260930T125301Z-small/console.log) =====
+orchestration-recipe-validation-audit-2026-09.sh mode=small
+started 2026-09-30T12:53:00.027Z
+== Preflight
+INFO  bash 3.2.57(1)-release (/bin/bash)
+PASS  bash >= 3.2
+PASS  command available: git
+PASS  command available: jq
+PASS  command available: perl
+PASS  command available: shasum
+PASS  command available: awk
+PASS  command available: xargs
+PASS  command available: mktemp
+PASS  command available: ps
+PASS  command available: tail
+PASS  command available: wc
+PASS  command available: claude
+INFO  claude 2.1.285 (~/.local/bin/claude)
+INFO  jq jq-1.7.1-apple
+INFO  timeout: built-in watchdog (GNU timeout not required); locking: per-attempt fragments (flock not required)
+PASS  claude version detected
+PASS  claude auth status reports loggedIn (only that field is read)
+PASS  jq supports --rawfile, --slurpfile and named captures
+PASS  perl modules Time::HiRes, POSIX, Encode
+PASS  JSON schema parses
+PASS  script is at the repository root
+PASS  build/recipe-runs is git-ignored
+PASS  item 01 tracked: src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java
+PASS    context for 01 tracked: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+PASS    context for 01 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 01 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS  item 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetController.java
+PASS    context for 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+PASS    context for 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 02 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS    context for 02 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS  item 03 tracked: src/main/java/org/springframework/samples/petclinic/owner/VisitController.java
+PASS    context for 03 tracked: src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+PASS    context for 03 tracked: src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java
+PASS  item 04 tracked: src/main/java/org/springframework/samples/petclinic/vet/VetController.java
+PASS    context for 04 tracked: src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java
+PASS  item 05 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+PASS    context for 05 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 05 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS    context for 05 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS  item 06 tracked: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+PASS    context for 06 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerTests.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java
+PASS  item 07 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 07 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS    context for 07 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS  item 08 tracked: src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+PASS    context for 08 tracked: src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java
+PASS  item 09 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 09 tracked: src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java
+PASS    context for 09 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS  item 10 tracked: src/main/java/org/springframework/samples/petclinic/system/CrashController.java
+PASS    context for 10 tracked: src/test/java/org/springframework/samples/petclinic/system/CrashControllerTests.java
+PASS    context for 10 tracked: src/test/java/org/springframework/samples/petclinic/system/CrashControllerIntegrationTests.java
+PASS  item 11 tracked: src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java
+PASS    context for 11 tracked: src/test/java/org/springframework/samples/petclinic/system/WelcomeControllerTests.java
+INFO  tolerated untracked deliverable: orchestration-recipe-validation-audit-2026-09.sh
+PASS  repository clean (no tracked, staged or unexpected untracked changes)
+INFO  branch homework/week4-part3-orchestration-recipe at 90f1498
+Preflight passed.
+
+== Effective limits
+requested model ........ claude-sonnet-5-5 (effort medium)
+max turns / call ....... 6
+max budget / call ...... USD 0.15
+timeout / attempt ...... 180s (TERM, then KILL after 10s)
+attempts / item ........ 2 (single 10-second backoff before attempt 2)
+concurrency ............ 3
+allowed worker tools ... ["StructuredOutput"] (checked per call from system/init)
+items this run ......... 5
+worst-case ceiling ..... 5 x 2 x USD 0.15 = USD 1.50
+ceilings by mode ....... small 5 x 2 x USD 0.15 = USD 1.50; full 11 x 2 x USD 0.15 = USD 3.30
+calibration ............ completed under the earlier USD 0.10 cap (reported USD 0.085666); a rerun would be 1 x 1 x USD 0.15 = USD 0.15
+approved total ......... USD 4.90 (0.10 calibration + small + full)
+worker command ......... claude -p --model claude-sonnet-5-5 --effort medium --max-turns 6 --max-budget-usd 0.15 --output-format stream-json --verbose --json-schema <schema> --tools '' --strict-mcp-config --safe-mode --setting-sources '' --permission-mode dontAsk --permission-prompts none --disable-slash-commands --no-session-persistence < prompt
+
+== Run 20260930T125301Z-small
+run directory build/recipe-runs/20260930T125301Z-small
+workers started 2026-09-30T12:53:01.989Z
+workers finished 2026-09-30T12:53:50.270Z (wall clock 48s, xargs exit 0)
+
+== Outcomes
+01  success  attempts=1  cost=0.0997834  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java
+02  success  attempts=1  cost=0.11895539999999999  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/PetController.java
+03  success  attempts=1  cost=0.0604194  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/VisitController.java
+04  success  attempts=1  cost=0.0351114  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/vet/VetController.java
+05  success  attempts=1  cost=0.0710894  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+
+== Isolation evidence per call
+01.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+02.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+03.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+04.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+05.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+
+== Totals
+claude -p invocations (audit lines) .. 5
+retry attempts (attempt > 1) ......... 0
+successful attempts .................. 5
+failed attempts ...................... 0
+failure reasons ...................... none
+timeouts ............................. 0
+calls over budget cap ................ 0
+isolation verified ................... 5 of 5
+permission denials ................... 0
+invalid evidence references .......... 0 of 165
+reported cost total (USD) ............ 0.3854 (reported by 5 of 5 calls)
+sum of attempt durations (s) ......... 120.662
+closest to budget cap ................ item 2 attempt 1 (PetController.java): USD 0.119 of 0.15
+closest to turn cap .................. item 5 attempt 1 (PetValidator.java): 2 of 6 turns
+closest to timeout ................... item 2 attempt 1 (PetController.java): 36.337s of 180s
+wall clock (s) ....................... 48
+
+== Post-run verification
+PASS  all 5 audit lines parse independently with jq and each is one physical line
+PASS  audit lines (5) = claude -p invocations (5), one line per invocation marker
+PASS  item 01 final outcome: success after 1 attempt(s)
+PASS  item 02 final outcome: success after 1 attempt(s)
+PASS  item 03 final outcome: success after 1 attempt(s)
+PASS  item 04 final outcome: success after 1 attempt(s)
+PASS  item 05 final outcome: success after 1 attempt(s)
+PASS  repository state unchanged (tracked, staged, untracked and ignored outside build/recipe-runs)
+PASS  no raw temporary output left behind
+PASS  claude version unchanged during the run (2.1.285)
+
+----- BEGIN AUDIT RECORD (verbatim copy of build/recipe-runs/20260930T125301Z-small/audit.ndjson, 5 lines) -----
+{"ts_start":"2026-09-30T12:53:02.269Z","ts_end":"2026-09-30T12:53:31.359Z","duration_ms":29096,"run_id":"20260930T125301Z-small","run_type":"small","item_index":1,"item":"src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":4523,"cacheReadInputTokens":2307,"cacheCreationInputTokens":13522,"webSearchRequests":0,"costUSD":0.0997834,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"10baae12-a32a-486e-aaf7-a956257e2df7","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0997834,"over_budget_cap":false,"duration_api_ms":26967,"usage":{"input_tokens":2,"cache_creation_input_tokens":13522,"cache_read_input_tokens":2307,"output_tokens":4523,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":13522,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":4523,"cache_read_input_tokens":2307,"cache_creation_input_tokens":13522,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":13522},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java","role":"target","lines":179,"sha256":"f1f61c17a818e0a0643bf3cd9bb3eaf32d6e019b3dac4f5dfd4890dc1221d16e"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Owner.java","role":"related-production","lines":185,"sha256":"7cac66179350f35c0b3b0622a8a9f79de3b232641aac88da4e816437451c7daa"},{"path":"src/main/java/org/springframework/samples/petclinic/model/Person.java","role":"related-production","lines":57,"sha256":"a872c368cd5b09a7cb8a3f42e1baff1f6b0adc7cfc5bccf5f426374292ba4244"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java","role":"test","lines":279,"sha256":"bf12386be5621935b92a30d8f7334e3a0399e41c9547b174f2f95fef96232358"}],"prompt_sha256":"76a402dd569aede25d04f7fb74871c30ef71c13aa838308f483e93fb91a0ce16","structured_output_valid":true,"findings":{"boundaries":11,"validation_rules":7,"validation_gaps":5,"covering_tests":12,"missing_tests":6,"needs_human_review":4},"evidence":{"total":41,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/01.a1.stdout.jsonl","bytes":49043,"sha256":"59eb536d19a1e9befc0ba6f482b041a2cea34cbe0713001e06ffa9a36d265660"},"stderr":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/01.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125301Z-small/results/01.json"}
+{"ts_start":"2026-09-30T12:53:02.331Z","ts_end":"2026-09-30T12:53:38.664Z","duration_ms":36337,"run_id":"20260930T125301Z-small","run_type":"small","item_index":2,"item":"src/main/java/org/springframework/samples/petclinic/owner/PetController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":5949,"cacheReadInputTokens":2307,"cacheCreationInputTokens":14750,"webSearchRequests":0,"costUSD":0.11895539999999999,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"40eeb75b-3c01-4501-9e6a-c609287a848d","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.11895539999999999,"over_budget_cap":false,"duration_api_ms":34338,"usage":{"input_tokens":2,"cache_creation_input_tokens":14750,"cache_read_input_tokens":2307,"output_tokens":5949,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":14750,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":5949,"cache_read_input_tokens":2307,"cache_creation_input_tokens":14750,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":14750},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetController.java","role":"target","lines":207,"sha256":"1a8a8097ff334b85d3a62c4df79ec52c2dbee8777925970e140081cff7e7c25e"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","role":"related-production","lines":69,"sha256":"1cee4c2a57afd7edb3521fa7a19c4b643f23c2f5b91406ecd638319c6cce9f7f"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","role":"related-production","lines":85,"sha256":"ec77c2d70ae043c6eb441e47ebc93a3d848d8ae9729068e8f4e997aedfa0bbd7"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java","role":"test","lines":274,"sha256":"29f21b836ebe350364d9b3084bbb7f46c22d360203144d4a4b425e3583403588"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java","role":"test","lines":139,"sha256":"91a7c7d4273233d61881519447af8690ace3e19f8a34fe4b874ad1534a462487"}],"prompt_sha256":"577baf22f80612d7b7a2b13eb7433c9e6573f6aadf4d978d444d5b6b395e7d60","structured_output_valid":true,"findings":{"boundaries":10,"validation_rules":12,"validation_gaps":8,"covering_tests":17,"missing_tests":10,"needs_human_review":5},"evidence":{"total":57,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/02.a1.stdout.jsonl","bytes":63413,"sha256":"7a1dc7f0635e79fbc4be39c19becb630101d0391ccf7147a690feaca51d73860"},"stderr":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/02.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125301Z-small/results/02.json"}
+{"ts_start":"2026-09-30T12:53:02.261Z","ts_end":"2026-09-30T12:53:26.173Z","duration_ms":23914,"run_id":"20260930T125301Z-small","run_type":"small","item_index":3,"item":"src/main/java/org/springframework/samples/petclinic/owner/VisitController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":3507,"cacheReadInputTokens":2307,"cacheCreationInputTokens":6221,"webSearchRequests":0,"costUSD":0.0604194,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"7284ec67-fd3b-43e1-90e3-8a76015bb159","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0604194,"over_budget_cap":false,"duration_api_ms":22018,"usage":{"input_tokens":2,"cache_creation_input_tokens":6221,"cache_read_input_tokens":2307,"output_tokens":3507,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":6221,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":3507,"cache_read_input_tokens":2307,"cache_creation_input_tokens":6221,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":6221},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/VisitController.java","role":"target","lines":114,"sha256":"b7c8f9cb7b2b2b5827d85787d1f18c95762a0213760013cef9d0a9e1c2c0f8d8"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Visit.java","role":"related-production","lines":68,"sha256":"8587d71a42308feb8fe427236a4d3e211bd1b3554e645d0e235afd681683226c"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java","role":"test","lines":109,"sha256":"e3d9fe4ad0c92bab43919d53d5e56a5036e0c694c3ad348a6796fdce762532bf"}],"prompt_sha256":"d6cd8af7b63da5cb218492fa19779102d02cee16cbb30c66d07d0ff74a314186","structured_output_valid":true,"findings":{"boundaries":6,"validation_rules":7,"validation_gaps":5,"covering_tests":4,"missing_tests":8,"needs_human_review":4},"evidence":{"total":30,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/03.a1.stdout.jsonl","bytes":40074,"sha256":"daa98e076c02012a89f280f8d8648aa21cf7214e653f57d7024df4e9b169e45c"},"stderr":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/03.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125301Z-small/results/03.json"}
+{"ts_start":"2026-09-30T12:53:26.705Z","ts_end":"2026-09-30T12:53:40.217Z","duration_ms":13523,"run_id":"20260930T125301Z-small","run_type":"small","item_index":4,"item":"src/main/java/org/springframework/samples/petclinic/vet/VetController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":1809,"cacheReadInputTokens":2307,"cacheCreationInputTokens":4139,"webSearchRequests":0,"costUSD":0.0351114,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"64f076d1-216f-4f0c-9f46-cfbb733e55e7","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0351114,"over_budget_cap":false,"duration_api_ms":11635,"usage":{"input_tokens":2,"cache_creation_input_tokens":4139,"cache_read_input_tokens":2307,"output_tokens":1809,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":4139,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":1809,"cache_read_input_tokens":2307,"cache_creation_input_tokens":4139,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":4139},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/vet/VetController.java","role":"target","lines":74,"sha256":"8a0d285d35e59e61ec98e650506b0b19d0142d75a0886268dd139530f3efb8b8"},{"path":"src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java","role":"test","lines":100,"sha256":"09c5a5b3d3c5f180ed1ef9ef2e4fc3d08989a18fe1e10d4b559b0e503babe182"}],"prompt_sha256":"71b6f82d2432db1f404668892cf29ec534e404be271333a73620b795a0ebb422","structured_output_valid":true,"findings":{"boundaries":3,"validation_rules":2,"validation_gaps":3,"covering_tests":2,"missing_tests":4,"needs_human_review":2},"evidence":{"total":14,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/04.a1.stdout.jsonl","bytes":21758,"sha256":"9bc7633895c9c333627528fbebc3a64f933beacd8960313a64407ed09585da75"},"stderr":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/04.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125301Z-small/results/04.json"}
+{"ts_start":"2026-09-30T12:53:32.027Z","ts_end":"2026-09-30T12:53:49.812Z","duration_ms":17792,"run_id":"20260930T125301Z-small","run_type":"small","item_index":5,"item":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":2618,"cacheReadInputTokens":2307,"cacheCreationInputTokens":11111,"webSearchRequests":0,"costUSD":0.0710894,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"48f9142f-dfd7-4548-8ac3-d7c04972b3f9","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0710894,"over_budget_cap":false,"duration_api_ms":16136,"usage":{"input_tokens":2,"cache_creation_input_tokens":11111,"cache_read_input_tokens":2307,"output_tokens":2618,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":11111,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":2618,"cache_read_input_tokens":2307,"cache_creation_input_tokens":11111,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":11111},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","role":"target","lines":69,"sha256":"1cee4c2a57afd7edb3521fa7a19c4b643f23c2f5b91406ecd638319c6cce9f7f"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","role":"related-production","lines":85,"sha256":"ec77c2d70ae043c6eb441e47ebc93a3d848d8ae9729068e8f4e997aedfa0bbd7"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java","role":"test","lines":139,"sha256":"91a7c7d4273233d61881519447af8690ace3e19f8a34fe4b874ad1534a462487"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java","role":"test","lines":274,"sha256":"29f21b836ebe350364d9b3084bbb7f46c22d360203144d4a4b425e3583403588"}],"prompt_sha256":"69ce0726df97c91899a852aceef8cf60643a8f1cb19a18b10ad559f028766337","structured_output_valid":true,"findings":{"boundaries":2,"validation_rules":4,"validation_gaps":3,"covering_tests":10,"missing_tests":4,"needs_human_review":2},"evidence":{"total":23,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/05.a1.stdout.jsonl","bytes":30005,"sha256":"979f836fe304f6596a8d0d5d2bd28ffa9f57e0051b8b54559637d7c3e525101d"},"stderr":{"path":"build/recipe-runs/20260930T125301Z-small/attempts/05.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125301Z-small/results/05.json"}
+----- END AUDIT RECORD -----
+finished 2026-09-30T12:53:51.464Z
+===== END SECTION 2 =====
+
+===== SECTION 3: FULL RUN (11 items, includes the full-run audit record)  (source: build/recipe-runs/20260930T125811Z-full/console.log) =====
+orchestration-recipe-validation-audit-2026-09.sh mode=full
+started 2026-09-30T12:58:09.756Z
+== Preflight
+INFO  bash 3.2.57(1)-release (/bin/bash)
+PASS  bash >= 3.2
+PASS  command available: git
+PASS  command available: jq
+PASS  command available: perl
+PASS  command available: shasum
+PASS  command available: awk
+PASS  command available: xargs
+PASS  command available: mktemp
+PASS  command available: ps
+PASS  command available: tail
+PASS  command available: wc
+PASS  command available: claude
+INFO  claude 2.1.285 (~/.local/bin/claude)
+INFO  jq jq-1.7.1-apple
+INFO  timeout: built-in watchdog (GNU timeout not required); locking: per-attempt fragments (flock not required)
+PASS  claude version detected
+PASS  claude auth status reports loggedIn (only that field is read)
+PASS  jq supports --rawfile, --slurpfile and named captures
+PASS  perl modules Time::HiRes, POSIX, Encode
+PASS  JSON schema parses
+PASS  script is at the repository root
+PASS  build/recipe-runs is git-ignored
+PASS  item 01 tracked: src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java
+PASS    context for 01 tracked: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+PASS    context for 01 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 01 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS  item 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetController.java
+PASS    context for 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+PASS    context for 02 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 02 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS    context for 02 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS  item 03 tracked: src/main/java/org/springframework/samples/petclinic/owner/VisitController.java
+PASS    context for 03 tracked: src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+PASS    context for 03 tracked: src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java
+PASS  item 04 tracked: src/main/java/org/springframework/samples/petclinic/vet/VetController.java
+PASS    context for 04 tracked: src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java
+PASS  item 05 tracked: src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+PASS    context for 05 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 05 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS    context for 05 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS  item 06 tracked: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+PASS    context for 06 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerTests.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS    context for 06 tracked: src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java
+PASS  item 07 tracked: src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+PASS    context for 07 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java
+PASS    context for 07 tracked: src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java
+PASS  item 08 tracked: src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+PASS    context for 08 tracked: src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java
+PASS  item 09 tracked: src/main/java/org/springframework/samples/petclinic/model/Person.java
+PASS    context for 09 tracked: src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java
+PASS    context for 09 tracked: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+PASS  item 10 tracked: src/main/java/org/springframework/samples/petclinic/system/CrashController.java
+PASS    context for 10 tracked: src/test/java/org/springframework/samples/petclinic/system/CrashControllerTests.java
+PASS    context for 10 tracked: src/test/java/org/springframework/samples/petclinic/system/CrashControllerIntegrationTests.java
+PASS  item 11 tracked: src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java
+PASS    context for 11 tracked: src/test/java/org/springframework/samples/petclinic/system/WelcomeControllerTests.java
+INFO  tolerated untracked deliverable: orchestration-recipe-validation-audit-2026-09.sh
+PASS  repository clean (no tracked, staged or unexpected untracked changes)
+INFO  branch homework/week4-part3-orchestration-recipe at 90f1498
+Preflight passed.
+
+== Effective limits
+requested model ........ claude-sonnet-5-5 (effort medium)
+max turns / call ....... 6
+max budget / call ...... USD 0.15
+timeout / attempt ...... 180s (TERM, then KILL after 10s)
+attempts / item ........ 2 (single 10-second backoff before attempt 2)
+concurrency ............ 3
+allowed worker tools ... ["StructuredOutput"] (checked per call from system/init)
+items this run ......... 11
+worst-case ceiling ..... 11 x 2 x USD 0.15 = USD 3.30
+ceilings by mode ....... small 5 x 2 x USD 0.15 = USD 1.50; full 11 x 2 x USD 0.15 = USD 3.30
+calibration ............ completed under the earlier USD 0.10 cap (reported USD 0.085666); a rerun would be 1 x 1 x USD 0.15 = USD 0.15
+approved total ......... USD 4.90 (0.10 calibration + small + full)
+worker command ......... claude -p --model claude-sonnet-5-5 --effort medium --max-turns 6 --max-budget-usd 0.15 --output-format stream-json --verbose --json-schema <schema> --tools '' --strict-mcp-config --safe-mode --setting-sources '' --permission-mode dontAsk --permission-prompts none --disable-slash-commands --no-session-persistence < prompt
+
+== Run 20260930T125811Z-full
+run directory build/recipe-runs/20260930T125811Z-full
+workers started 2026-09-30T12:58:12.340Z
+workers finished 2026-09-30T12:59:19.934Z (wall clock 67s, xargs exit 0)
+
+== Outcomes
+01  success  attempts=1  cost=0.09900339999999999  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java
+02  success  attempts=1  cost=0.1069254  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/PetController.java
+03  success  attempts=1  cost=0.05778939999999999  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/VisitController.java
+04  success  attempts=1  cost=0.0359314  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/vet/VetController.java
+05  success  attempts=1  cost=0.0720194  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java
+06  success  attempts=1  cost=0.07914940000000001  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+07  success  attempts=1  cost=0.06417139999999999  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/Pet.java
+08  success  attempts=1  cost=0.039111400000000004  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/owner/Visit.java
+09  success  attempts=1  cost=0.0477134  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/model/Person.java
+10  success  attempts=1  cost=0.027571400000000003  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/system/CrashController.java
+11  success  attempts=1  cost=0.0152654  turns=2  reason=-  src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java
+
+== Isolation evidence per call
+01.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+02.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+03.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+04.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+05.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+06.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+07.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+08.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+09.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+10.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+11.a1  verified=true  tools=["StructuredOutput"]  mcp_servers=[]  permission_denials=0  models=["claude-sonnet-5-5"]
+
+== Totals
+claude -p invocations (audit lines) .. 11
+retry attempts (attempt > 1) ......... 0
+successful attempts .................. 11
+failed attempts ...................... 0
+failure reasons ...................... none
+timeouts ............................. 0
+calls over budget cap ................ 0
+isolation verified ................... 11 of 11
+permission denials ................... 0
+invalid evidence references .......... 1 of 221
+reported cost total (USD) ............ 0.6447 (reported by 11 of 11 calls)
+sum of attempt durations (s) ......... 191.992
+closest to budget cap ................ item 2 attempt 1 (PetController.java): USD 0.1069 of 0.15
+closest to turn cap .................. item 11 attempt 1 (WelcomeController.java): 2 of 6 turns
+closest to timeout ................... item 1 attempt 1 (OwnerController.java): 29.24s of 180s
+wall clock (s) ....................... 67
+
+== Post-run verification
+PASS  all 11 audit lines parse independently with jq and each is one physical line
+PASS  audit lines (11) = claude -p invocations (11), one line per invocation marker
+PASS  item 01 final outcome: success after 1 attempt(s)
+PASS  item 02 final outcome: success after 1 attempt(s)
+PASS  item 03 final outcome: success after 1 attempt(s)
+PASS  item 04 final outcome: success after 1 attempt(s)
+PASS  item 05 final outcome: success after 1 attempt(s)
+PASS  item 06 final outcome: success after 1 attempt(s)
+PASS  item 07 final outcome: success after 1 attempt(s)
+PASS  item 08 final outcome: success after 1 attempt(s)
+PASS  item 09 final outcome: success after 1 attempt(s)
+PASS  item 10 final outcome: success after 1 attempt(s)
+PASS  item 11 final outcome: success after 1 attempt(s)
+PASS  repository state unchanged (tracked, staged, untracked and ignored outside build/recipe-runs)
+PASS  no raw temporary output left behind
+PASS  claude version unchanged during the run (2.1.285)
+
+----- BEGIN AUDIT RECORD (verbatim copy of build/recipe-runs/20260930T125811Z-full/audit.ndjson, 11 lines) -----
+{"ts_start":"2026-09-30T12:58:12.968Z","ts_end":"2026-09-30T12:58:42.221Z","duration_ms":29240,"run_id":"20260930T125811Z-full","run_type":"full","item_index":1,"item":"src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":4445,"cacheReadInputTokens":2307,"cacheCreationInputTokens":13522,"webSearchRequests":0,"costUSD":0.09900339999999999,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"3b543a75-f7a2-4206-b67d-baa9a8b159f8","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.09900339999999999,"over_budget_cap":false,"duration_api_ms":27597,"usage":{"input_tokens":2,"cache_creation_input_tokens":13522,"cache_read_input_tokens":2307,"output_tokens":4445,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":13522,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":4445,"cache_read_input_tokens":2307,"cache_creation_input_tokens":13522,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":13522},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java","role":"target","lines":179,"sha256":"f1f61c17a818e0a0643bf3cd9bb3eaf32d6e019b3dac4f5dfd4890dc1221d16e"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Owner.java","role":"related-production","lines":185,"sha256":"7cac66179350f35c0b3b0622a8a9f79de3b232641aac88da4e816437451c7daa"},{"path":"src/main/java/org/springframework/samples/petclinic/model/Person.java","role":"related-production","lines":57,"sha256":"a872c368cd5b09a7cb8a3f42e1baff1f6b0adc7cfc5bccf5f426374292ba4244"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java","role":"test","lines":279,"sha256":"bf12386be5621935b92a30d8f7334e3a0399e41c9547b174f2f95fef96232358"}],"prompt_sha256":"76a402dd569aede25d04f7fb74871c30ef71c13aa838308f483e93fb91a0ce16","structured_output_valid":true,"findings":{"boundaries":10,"validation_rules":7,"validation_gaps":5,"covering_tests":12,"missing_tests":6,"needs_human_review":4},"evidence":{"total":40,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/01.a1.stdout.jsonl","bytes":48451,"sha256":"a7ef61acad741d414e406204974579bcace3d579b19b2cbad400bf50813ebe11"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/01.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/01.json"}
+{"ts_start":"2026-09-30T12:58:13.024Z","ts_end":"2026-09-30T12:58:42.216Z","duration_ms":29189,"run_id":"20260930T125811Z-full","run_type":"full","item_index":2,"item":"src/main/java/org/springframework/samples/petclinic/owner/PetController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":4746,"cacheReadInputTokens":2307,"cacheCreationInputTokens":14750,"webSearchRequests":0,"costUSD":0.1069254,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"b649ba4f-aa58-49aa-93d4-00cca3560896","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.1069254,"over_budget_cap":false,"duration_api_ms":27870,"usage":{"input_tokens":2,"cache_creation_input_tokens":14750,"cache_read_input_tokens":2307,"output_tokens":4746,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":14750,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":4746,"cache_read_input_tokens":2307,"cache_creation_input_tokens":14750,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":14750},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetController.java","role":"target","lines":207,"sha256":"1a8a8097ff334b85d3a62c4df79ec52c2dbee8777925970e140081cff7e7c25e"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","role":"related-production","lines":69,"sha256":"1cee4c2a57afd7edb3521fa7a19c4b643f23c2f5b91406ecd638319c6cce9f7f"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","role":"related-production","lines":85,"sha256":"ec77c2d70ae043c6eb441e47ebc93a3d848d8ae9729068e8f4e997aedfa0bbd7"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java","role":"test","lines":274,"sha256":"29f21b836ebe350364d9b3084bbb7f46c22d360203144d4a4b425e3583403588"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java","role":"test","lines":139,"sha256":"91a7c7d4273233d61881519447af8690ace3e19f8a34fe4b874ad1534a462487"}],"prompt_sha256":"577baf22f80612d7b7a2b13eb7433c9e6573f6aadf4d978d444d5b6b395e7d60","structured_output_valid":true,"findings":{"boundaries":8,"validation_rules":8,"validation_gaps":6,"covering_tests":15,"missing_tests":8,"needs_human_review":4},"evidence":{"total":45,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/02.a1.stdout.jsonl","bytes":51073,"sha256":"48e4116e1d92d67fd93dd35176bf825f09645e7524c9c53b7dc337a1019eb15a"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/02.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/02.json"}
+{"ts_start":"2026-09-30T12:58:12.949Z","ts_end":"2026-09-30T12:58:35.998Z","duration_ms":23047,"run_id":"20260930T125811Z-full","run_type":"full","item_index":3,"item":"src/main/java/org/springframework/samples/petclinic/owner/VisitController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":3244,"cacheReadInputTokens":2307,"cacheCreationInputTokens":6221,"webSearchRequests":0,"costUSD":0.05778939999999999,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"6c8cfd73-14a3-4b03-bde4-1f6f774ce120","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.05778939999999999,"over_budget_cap":false,"duration_api_ms":20743,"usage":{"input_tokens":2,"cache_creation_input_tokens":6221,"cache_read_input_tokens":2307,"output_tokens":3244,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":6221,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":3244,"cache_read_input_tokens":2307,"cache_creation_input_tokens":6221,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":6221},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/VisitController.java","role":"target","lines":114,"sha256":"b7c8f9cb7b2b2b5827d85787d1f18c95762a0213760013cef9d0a9e1c2c0f8d8"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Visit.java","role":"related-production","lines":68,"sha256":"8587d71a42308feb8fe427236a4d3e211bd1b3554e645d0e235afd681683226c"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java","role":"test","lines":109,"sha256":"e3d9fe4ad0c92bab43919d53d5e56a5036e0c694c3ad348a6796fdce762532bf"}],"prompt_sha256":"d6cd8af7b63da5cb218492fa19779102d02cee16cbb30c66d07d0ff74a314186","structured_output_valid":true,"findings":{"boundaries":6,"validation_rules":6,"validation_gaps":4,"covering_tests":4,"missing_tests":7,"needs_human_review":4},"evidence":{"total":27,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/03.a1.stdout.jsonl","bytes":37394,"sha256":"950ed48390e825389e03ad6c29d5c84b88b7e52fd02aab3b201ffa55ff3674e6"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/03.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/03.json"}
+{"ts_start":"2026-09-30T12:58:36.620Z","ts_end":"2026-09-30T12:58:51.245Z","duration_ms":14630,"run_id":"20260930T125811Z-full","run_type":"full","item_index":4,"item":"src/main/java/org/springframework/samples/petclinic/vet/VetController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":1891,"cacheReadInputTokens":2307,"cacheCreationInputTokens":4139,"webSearchRequests":0,"costUSD":0.0359314,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"1427bcce-1064-4504-af3d-ae13cd407907","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0359314,"over_budget_cap":false,"duration_api_ms":12880,"usage":{"input_tokens":2,"cache_creation_input_tokens":4139,"cache_read_input_tokens":2307,"output_tokens":1891,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":4139,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":1891,"cache_read_input_tokens":2307,"cache_creation_input_tokens":4139,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":4139},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/vet/VetController.java","role":"target","lines":74,"sha256":"8a0d285d35e59e61ec98e650506b0b19d0142d75a0886268dd139530f3efb8b8"},{"path":"src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java","role":"test","lines":100,"sha256":"09c5a5b3d3c5f180ed1ef9ef2e4fc3d08989a18fe1e10d4b559b0e503babe182"}],"prompt_sha256":"71b6f82d2432db1f404668892cf29ec534e404be271333a73620b795a0ebb422","structured_output_valid":true,"findings":{"boundaries":3,"validation_rules":2,"validation_gaps":3,"covering_tests":2,"missing_tests":4,"needs_human_review":3},"evidence":{"total":14,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/04.a1.stdout.jsonl","bytes":22894,"sha256":"058cafee9b9199b1fdfc02cf565dd73804ec926c4005b6edd5c7a6931269fb30"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/04.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/04.json"}
+{"ts_start":"2026-09-30T12:58:42.867Z","ts_end":"2026-09-30T12:59:01.700Z","duration_ms":18851,"run_id":"20260930T125811Z-full","run_type":"full","item_index":5,"item":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":2711,"cacheReadInputTokens":2307,"cacheCreationInputTokens":11111,"webSearchRequests":0,"costUSD":0.0720194,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"04d4719f-edb1-41b8-90fe-5781360ad2d8","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0720194,"over_budget_cap":false,"duration_api_ms":17020,"usage":{"input_tokens":2,"cache_creation_input_tokens":11111,"cache_read_input_tokens":2307,"output_tokens":2711,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":11111,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":2711,"cache_read_input_tokens":2307,"cache_creation_input_tokens":11111,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":11111},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java","role":"target","lines":69,"sha256":"1cee4c2a57afd7edb3521fa7a19c4b643f23c2f5b91406ecd638319c6cce9f7f"},{"path":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","role":"related-production","lines":85,"sha256":"ec77c2d70ae043c6eb441e47ebc93a3d848d8ae9729068e8f4e997aedfa0bbd7"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java","role":"test","lines":139,"sha256":"91a7c7d4273233d61881519447af8690ace3e19f8a34fe4b874ad1534a462487"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java","role":"test","lines":274,"sha256":"29f21b836ebe350364d9b3084bbb7f46c22d360203144d4a4b425e3583403588"}],"prompt_sha256":"69ce0726df97c91899a852aceef8cf60643a8f1cb19a18b10ad559f028766337","structured_output_valid":true,"findings":{"boundaries":2,"validation_rules":4,"validation_gaps":3,"covering_tests":10,"missing_tests":4,"needs_human_review":3},"evidence":{"total":23,"invalid":1,"invalid_examples":["src/main/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java:46"]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/05.a1.stdout.jsonl","bytes":31361,"sha256":"6bf9f54f1d06bbd3ab9025ba7af249fb99baf8665b9bcb5f0f2d26844e9253ab"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/05.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/05.json"}
+{"ts_start":"2026-09-30T12:58:42.935Z","ts_end":"2026-09-30T12:59:02.720Z","duration_ms":19785,"run_id":"20260930T125811Z-full","run_type":"full","item_index":6,"item":"src/main/java/org/springframework/samples/petclinic/owner/Owner.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":2872,"cacheReadInputTokens":2307,"cacheCreationInputTokens":12491,"webSearchRequests":0,"costUSD":0.07914940000000001,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"c80bf1fb-50e6-4b1b-94f5-3a6f37d9af83","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.07914940000000001,"over_budget_cap":false,"duration_api_ms":18045,"usage":{"input_tokens":2,"cache_creation_input_tokens":12491,"cache_read_input_tokens":2307,"output_tokens":2872,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":12491,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":2872,"cache_read_input_tokens":2307,"cache_creation_input_tokens":12491,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":12491},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/Owner.java","role":"target","lines":185,"sha256":"7cac66179350f35c0b3b0622a8a9f79de3b232641aac88da4e816437451c7daa"},{"path":"src/main/java/org/springframework/samples/petclinic/model/Person.java","role":"related-production","lines":57,"sha256":"a872c368cd5b09a7cb8a3f42e1baff1f6b0adc7cfc5bccf5f426374292ba4244"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/OwnerTests.java","role":"test","lines":51,"sha256":"a0c5366440acf52c330729cc301419acbc279d22c4bc252e0ae70aa02098095d"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java","role":"test","lines":279,"sha256":"bf12386be5621935b92a30d8f7334e3a0399e41c9547b174f2f95fef96232358"},{"path":"src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java","role":"test","lines":80,"sha256":"0e0bd7fa5639f7584ff75513a1a5194a6d238be14d22e0cacb7762c01aa53f28"}],"prompt_sha256":"6d1397eb419c8e22685797b9bc13e172d55e803131d3a2675050f4460d0d2fdd","structured_output_valid":true,"findings":{"boundaries":4,"validation_rules":6,"validation_gaps":3,"covering_tests":7,"missing_tests":5,"needs_human_review":3},"evidence":{"total":25,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/06.a1.stdout.jsonl","bytes":32069,"sha256":"abc5ca55e8f8b8f60c870d4495d6f983ed5ecaea9b325e94ace77da0e4174f3c"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/06.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/06.json"}
+{"ts_start":"2026-09-30T12:58:51.832Z","ts_end":"2026-09-30T12:59:08.551Z","duration_ms":16726,"run_id":"20260930T125811Z-full","run_type":"full","item_index":7,"item":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":2371,"cacheReadInputTokens":2307,"cacheCreationInputTokens":9999,"webSearchRequests":0,"costUSD":0.06417139999999999,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"19766d61-7b9b-497d-b65a-5c3770b23c12","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.06417139999999999,"over_budget_cap":false,"duration_api_ms":15496,"usage":{"input_tokens":2,"cache_creation_input_tokens":9999,"cache_read_input_tokens":2307,"output_tokens":2371,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":9999,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":2371,"cache_read_input_tokens":2307,"cache_creation_input_tokens":9999,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":9999},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/Pet.java","role":"target","lines":85,"sha256":"ec77c2d70ae043c6eb441e47ebc93a3d848d8ae9729068e8f4e997aedfa0bbd7"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetValidatorTests.java","role":"test","lines":139,"sha256":"91a7c7d4273233d61881519447af8690ace3e19f8a34fe4b874ad1534a462487"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java","role":"test","lines":274,"sha256":"29f21b836ebe350364d9b3084bbb7f46c22d360203144d4a4b425e3583403588"}],"prompt_sha256":"980382eac71308296356e429258d25572a9913180dda1507dbac3f4302fadc95","structured_output_valid":true,"findings":{"boundaries":5,"validation_rules":2,"validation_gaps":2,"covering_tests":6,"missing_tests":3,"needs_human_review":3},"evidence":{"total":18,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/07.a1.stdout.jsonl","bytes":27582,"sha256":"de30237a2d8ef2793f08c96b2772db5fcf047a96fda0b0135920a0eb9d79c9ae"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/07.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/07.json"}
+{"ts_start":"2026-09-30T12:59:02.284Z","ts_end":"2026-09-30T12:59:18.861Z","duration_ms":16583,"run_id":"20260930T125811Z-full","run_type":"full","item_index":8,"item":"src/main/java/org/springframework/samples/petclinic/owner/Visit.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":2193,"cacheReadInputTokens":2307,"cacheCreationInputTokens":4179,"webSearchRequests":0,"costUSD":0.039111400000000004,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"3b0bc031-4cc1-40d6-acc6-ba3dccea10f9","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.039111400000000004,"over_budget_cap":false,"duration_api_ms":14544,"usage":{"input_tokens":2,"cache_creation_input_tokens":4179,"cache_read_input_tokens":2307,"output_tokens":2193,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":4179,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":2193,"cache_read_input_tokens":2307,"cache_creation_input_tokens":4179,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":4179},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/owner/Visit.java","role":"target","lines":68,"sha256":"8587d71a42308feb8fe427236a4d3e211bd1b3554e645d0e235afd681683226c"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java","role":"test","lines":109,"sha256":"e3d9fe4ad0c92bab43919d53d5e56a5036e0c694c3ad348a6796fdce762532bf"}],"prompt_sha256":"cbd12d62da35c052c2f4902741def825185bf3b1fafe33c24348e6494407b0fb","structured_output_valid":true,"findings":{"boundaries":3,"validation_rules":3,"validation_gaps":3,"covering_tests":3,"missing_tests":4,"needs_human_review":3},"evidence":{"total":16,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/08.a1.stdout.jsonl","bytes":26112,"sha256":"f64f88e86ae334a0c969e045d4d197c877d86d768c3a43da014365c20963db11"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/08.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/08.json"}
+{"ts_start":"2026-09-30T12:59:03.321Z","ts_end":"2026-09-30T12:59:12.697Z","duration_ms":9382,"run_id":"20260930T125811Z-full","run_type":"full","item_index":9,"item":"src/main/java/org/springframework/samples/petclinic/model/Person.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":1114,"cacheReadInputTokens":2307,"cacheCreationInputTokens":9027,"webSearchRequests":0,"costUSD":0.0477134,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"3e3de0fb-0f0a-466b-96e8-e0e4e080b35e","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0477134,"over_budget_cap":false,"duration_api_ms":7458,"usage":{"input_tokens":2,"cache_creation_input_tokens":9027,"cache_read_input_tokens":2307,"output_tokens":1114,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":9027,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":1114,"cache_read_input_tokens":2307,"cache_creation_input_tokens":9027,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":9027},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/model/Person.java","role":"target","lines":57,"sha256":"a872c368cd5b09a7cb8a3f42e1baff1f6b0adc7cfc5bccf5f426374292ba4244"},{"path":"src/test/java/org/springframework/samples/petclinic/model/ValidatorTests.java","role":"test","lines":80,"sha256":"0e0bd7fa5639f7584ff75513a1a5194a6d238be14d22e0cacb7762c01aa53f28"},{"path":"src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java","role":"test","lines":279,"sha256":"bf12386be5621935b92a30d8f7334e3a0399e41c9547b174f2f95fef96232358"}],"prompt_sha256":"674ddd9f8f632b3f0457ac855d9a85b8bc7c880d6a957c0e9cc80d6e515ed416","structured_output_valid":true,"findings":{"boundaries":1,"validation_rules":2,"validation_gaps":0,"covering_tests":2,"missing_tests":2,"needs_human_review":1},"evidence":{"total":7,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/09.a1.stdout.jsonl","bytes":14471,"sha256":"7244751e147011b35c7f419e46f8d5714c6132bc05997acba00f493619049389"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/09.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/09.json"}
+{"ts_start":"2026-09-30T12:59:09.511Z","ts_end":"2026-09-30T12:59:17.800Z","duration_ms":8292,"run_id":"20260930T125811Z-full","run_type":"full","item_index":10,"item":"src/main/java/org/springframework/samples/petclinic/system/CrashController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":851,"cacheReadInputTokens":2307,"cacheCreationInputTokens":4649,"webSearchRequests":0,"costUSD":0.027571400000000003,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"6bb18b19-93b1-41a7-86ba-38bae30a7502","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.027571400000000003,"over_budget_cap":false,"duration_api_ms":6467,"usage":{"input_tokens":2,"cache_creation_input_tokens":4649,"cache_read_input_tokens":2307,"output_tokens":851,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":4649,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":851,"cache_read_input_tokens":2307,"cache_creation_input_tokens":4649,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":4649},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/system/CrashController.java","role":"target","lines":37,"sha256":"d7c003dc6357596eefa345eff63ecf3909a50238e030e3c93f09426e537ba517"},{"path":"src/test/java/org/springframework/samples/petclinic/system/CrashControllerTests.java","role":"test","lines":41,"sha256":"1b7da80161788a0429a1949b421931aadd72fd5a1422b7cc0c2823c499c329df"},{"path":"src/test/java/org/springframework/samples/petclinic/system/CrashControllerIntegrationTests.java","role":"test","lines":101,"sha256":"e3237a6754842dccf92abc2ebfb7a515d79de55a482e165580ed2f39e529dbf3"}],"prompt_sha256":"e9ff01663b61b3438c47d0ff9a057090f3b5e1ff607c637f4d9aae935f1a717f","structured_output_valid":true,"findings":{"boundaries":1,"validation_rules":0,"validation_gaps":0,"covering_tests":3,"missing_tests":0,"needs_human_review":2},"evidence":{"total":4,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/10.a1.stdout.jsonl","bytes":12354,"sha256":"e770ce3306af6ccd44cfea64b7220c4eeadba70333142101f3574d77ff0e565b"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/10.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/10.json"}
+{"ts_start":"2026-09-30T12:59:13.302Z","ts_end":"2026-09-30T12:59:19.564Z","duration_ms":6267,"run_id":"20260930T125811Z-full","run_type":"full","item_index":11,"item":"src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java","attempt":1,"max_attempts":2,"status":"success","final":true,"failure_reason":null,"retryable":null,"next_action":"none","exit_code":0,"timed_out":false,"requested_model":"claude-sonnet-5-5","requested_effort":"medium","model_usage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":494,"cacheReadInputTokens":2307,"cacheCreationInputTokens":2465,"webSearchRequests":0,"costUSD":0.0152654,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"session_id":"e0068f1a-ef63-419c-be1e-8450a3bb65c9","result_subtype":"success","result_is_error":null,"num_turns":2,"total_cost_usd":0.0152654,"over_budget_cap":false,"duration_api_ms":4242,"usage":{"input_tokens":2,"cache_creation_input_tokens":2465,"cache_read_input_tokens":2307,"output_tokens":494,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":2465,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":494,"cache_read_input_tokens":2307,"cache_creation_input_tokens":2465,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":2465},"type":"message"}],"speed":"standard","fallback_credit":null},"permission_denials":[],"isolation":{"verified":true,"init_seen":true,"allowed_tools":["StructuredOutput"],"tools":["StructuredOutput"],"unexpected_tools":[],"mcp_servers":[],"permission_mode":"dontAsk","init_model":"claude-sonnet-5-5"},"limits":{"max_turns":6,"max_budget_usd":0.15,"timeout_s":180,"kill_grace_s":10,"backoff_s":10},"claude_version":"2.1.285","context_files":[{"path":"src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java","role":"target","lines":30,"sha256":"cfdffa794c8ec7a0c634a7d39d39f9abc1dd2ddc4b4d7a591b341136015a6f66"},{"path":"src/test/java/org/springframework/samples/petclinic/system/WelcomeControllerTests.java","role":"test","lines":43,"sha256":"805bc085bfd0132307e82c20db0a36132df04bfec5b1f21addbefcf2a32ccfae"}],"prompt_sha256":"8feaaa8b7eaa16bf14500d191e42b7f43f5c2e7613af73ce8a9b0c9ee8cf6b79","structured_output_valid":true,"findings":{"boundaries":1,"validation_rules":0,"validation_gaps":0,"covering_tests":1,"missing_tests":0,"needs_human_review":1},"evidence":{"total":2,"invalid":0,"invalid_examples":[]},"stream_events":5,"stream_non_json_lines":0,"redactions":{"stdout":0,"stderr":0},"stdout":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/11.a1.stdout.jsonl","bytes":8304,"sha256":"abf324ee2adeb9187a28999d98f909149dc4e36b015fb01f8b122f3905bccaf9"},"stderr":{"path":"build/recipe-runs/20260930T125811Z-full/attempts/11.a1.stderr.txt","bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"result_path":"build/recipe-runs/20260930T125811Z-full/results/11.json"}
+----- END AUDIT RECORD -----
+finished 2026-09-30T12:59:21.805Z
+===== END SECTION 3 =====
