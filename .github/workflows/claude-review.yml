@@ -76,6 +76,6 @@ jobs:
           claude_args: |
             --max-turns 10
             --tools "Bash"
-            --allowedTools "Bash"
+            --allowedTools "Bash(gh:*)"
             --disallowedTools "mcp__*"
             --strict-mcp-config
