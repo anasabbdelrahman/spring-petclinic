@@ -1,0 +1,10 @@
+I switched `VetControllerTests` to constructor injection, but I haven't run the tests. The command to run them (`./mvnw test -Dtest=VetControllerTests`) needed approval, and this session couldn't ask for it.
+
+The change is in `src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java`:
+- The `@Autowired private MockMvc mockMvc;` field injection is gone.
+- There's now a `private final MockMvc mockMvc;` field.
+- A new `@Autowired` package-private constructor `VetControllerTests(MockMvc mockMvc)` sets that field.
+
+The `@MockitoBean VetRepository vets` field is unchanged; it stays field-injected, which is the normal way to use `@MockitoBean`.
+
+To check it, run `./mvnw test -Dtest=VetControllerTests`.
