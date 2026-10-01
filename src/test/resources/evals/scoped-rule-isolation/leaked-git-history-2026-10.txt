@@ -1,0 +1,16 @@
+I switched `VetControllerTests` to constructor injection, but I haven't verified it: you didn't approve the Gradle test run, so it never ran.
+
+The change in `src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java`:
+- Removed the `@Autowired` field injection.
+- Added `private final MockMvc mockMvc;`.
+- Added an `@Autowired` constructor `VetControllerTests(MockMvc mockMvc)` that stores it.
+- Left `@MockitoBean VetRepository vets` and the class annotations as they were.
+
+Your team rule in `.claude/rules/controller-test-wiring.md` forbids constructor injection, but only for `owner/*ControllerTests.java`. This file is in `vet/`, so the rule doesn't cover it. If the convention is meant to apply to every controller test, this change goes against it, and you'd need to either widen the rule's `paths` or undo this change.
+
+To check it, run:
+```
+./gradlew test --tests 'org.springframework.samples.petclinic.vet.VetControllerTests'
+```
+
+Several claude.ai connectors (Asana, Atlassian, Slack, Gmail, Google Drive, Notion and others) aren't available in this session until you authorize them in your claude.ai connector settings. None of them were needed for this task.

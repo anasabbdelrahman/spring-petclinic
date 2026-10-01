@@ -1,0 +1,14 @@
+I switched `VetControllerTests` to constructor injection, but I couldn't run the tests: the Gradle command was blocked waiting for permission, so the change hasn't been compiled or run.
+
+In `src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java`:
+- I removed the `@Autowired` from the field, which is now `private final MockMvc mockMvc;`.
+- I added an `@Autowired VetControllerTests(MockMvc mockMvc)` constructor that sets the field.
+- The `@MockitoBean VetRepository vets` field, the class annotations and the test methods are unchanged.
+
+Your new `.claude/rules/controller-test-wiring.md` says not to use constructor injection for MockMvc. That rule only covers `owner/*ControllerTests.java`, so it doesn't apply to this `vet/` test, but the vet tests now wire MockMvc differently from the owner tests. If you meant the rule to cover all controller tests, either this change or the rule's path needs to change.
+
+To check the change, run:
+```
+./gradlew test --tests 'org.springframework.samples.petclinic.vet.VetControllerTests'
+```
+Or allow that command and I'll run it and report the result.
