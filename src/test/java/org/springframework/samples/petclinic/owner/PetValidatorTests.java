@@ -28,6 +28,7 @@ import org.springframework.validation.MapBindingResult;
 import java.time.LocalDate;
 import java.util.HashMap;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,6 +85,18 @@ class PetValidatorTests {
 		assertFalse(errors.hasErrors());
 	}
 
+	@Test
+	void validateAcceptsNameWithDigitsAndLetters() {
+		petType.setName(petTypeName);
+		pet.setName("Rex2");
+		pet.setType(petType);
+		pet.setBirthDate(petBirthDate);
+
+		petValidator.validate(pet, errors);
+
+		assertFalse(errors.hasErrors());
+	}
+
 	@Nested
 	class ValidateHasErrors {
 
@@ -132,6 +145,18 @@ class PetValidatorTests {
 			petValidator.validate(pet, errors);
 
 			assertTrue(errors.hasFieldErrors("name"));
+		}
+
+		@Test
+		void validateWithDigitsOnlyPetName() {
+			petType.setName(petTypeName);
+			pet.setName("12345");
+			pet.setType(petType);
+			pet.setBirthDate(petBirthDate);
+
+			petValidator.validate(pet, errors);
+
+			assertEquals("invalid", errors.getFieldError("name").getCode());
 		}
 
 	}
